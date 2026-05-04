@@ -1,37 +1,41 @@
 import os
 import asyncio
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 import google.generativeai as genai
 
-# Ambil Variables
-TOKEN = os.getenv('BOT_TOKEN')
-GEMINI_KEY = os.getenv('GEMINI_KEY')
+# Ambil Variabel dari Railway
+TOKEN = os.getenv('TOKEN_BOT')
+KUNCI_GEMINI = os.getenv('KUNCI_GEMINI')
 
-# Konfigurasi AI - Cara Panggil Paling Aman
-genai.configure(api_key=GEMINI_KEY)
+# Konfigurasi AI
+genai.configure(api_key=KUNCI_GEMINI)
 
-# Pakai model 'gemini-pro' dengan penanganan error manual
+# Inisialisasi Bot
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 @dp.message()
-async def chat_handler(message: Message):
-    if not message.text: return
+async def handle_chat(message: Message):
+    if not message.text:
+        return
+    
     try:
-        # Panggil AI tanpa ribet
+        # Panggil AI Gemini 1.5 Flash
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(message.text)
+        
         if response.text:
             await message.answer(response.text)
         else:
-            await message.answer("Bolu paham, tapi bingung mau jawab apa...")
+            await message.answer("Bolu paham, tapi bingung mau jawab apa.")
+            
     except Exception as e:
-        print(f"Error: {e}")
-        await message.answer("Bolu lagi meditasi sebentar, coba chat lagi ya Bos!")
+        print(f"Kesalahan: {e}")
+        await message.answer("Bolu lagi merenung sebentar, coba ngobrol lagi nanti ya.")
 
 async def main():
-    # Hapus Webhook lama agar tidak bentrok (PENTING!)
+    # Hapus Webhook lama agar tidak bertabrakan
     await bot.delete_webhook(drop_pending_updates=True)
     print(">>> BOLU SUDAH MELEK & SIAP TEMPUR! <<<")
     await dp.start_polling(bot)
