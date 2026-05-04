@@ -15,7 +15,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash') # Pakai model terbaru
+model = genai.GenerativeModel('gemini-pro') # Pakai model terbaru
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
