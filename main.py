@@ -4,32 +4,30 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 import google.generativeai as genai
 
-# AMBIL VARIABEL (Harus pas dengan nama di Railway!)
+# Ambil Variabel
 TOKEN = os.getenv('BOT_TOKEN')
 KUNCI = os.getenv('GEMINI_KEY')
 
-# Konfigurasi AI
+# Setel Gemini
 genai.configure(api_key=KUNCI)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Inisialisasi Bot
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 @dp.message()
-async def handle_message(message: Message):
-    if not message.text:
-        return
+async def chat(message: Message):
+    if not message.text: return
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(message.text)
-        await message.answer(response.text)
+        respon = model.generate_content(message.text)
+        await message.answer(respon.text)
     except Exception as e:
         print(f"Error: {e}")
-        await message.answer("Bolu lagi pening, Bos. Cek log atau kunci Gemini!")
+        await message.answer("Bolu lagi pening, Bos. Cek kuncinya!")
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU SIAP TEMPUR! <<<")
+    print(">>> BOLU SIAP! <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
