@@ -20,7 +20,7 @@ async def chat_handler(message: Message):
     if not message.text: return
     try:
         # Panggil AI tanpa ribet
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(message.text)
         if response.text:
             await message.answer(response.text)
