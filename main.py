@@ -1,43 +1,35 @@
 import os
 import asyncio
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 import google.generativeai as genai
 
-# Ambil Variabel dari Railway
-TOKEN = os.getenv('TOKEN_BOT')
-KUNCI_GEMINI = os.getenv('KUNCI_GEMINI')
+# AMBIL VARIABEL (Harus pas dengan nama di Railway!)
+TOKEN = os.getenv('BOT_TOKEN')
+KUNCI = os.getenv('GEMINI_KEY')
 
 # Konfigurasi AI
-genai.configure(api_key=KUNCI_GEMINI)
+genai.configure(api_key=KUNCI)
 
 # Inisialisasi Bot
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 @dp.message()
-async def handle_chat(message: Message):
+async def handle_message(message: Message):
     if not message.text:
         return
-    
     try:
-        # Panggil AI Gemini 1.5 Flash
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(message.text)
-        
-        if response.text:
-            await message.answer(response.text)
-        else:
-            await message.answer("Bolu paham, tapi bingung mau jawab apa.")
-            
+        await message.answer(response.text)
     except Exception as e:
-        print(f"Kesalahan: {e}")
-        await message.answer("Bolu lagi merenung sebentar, coba ngobrol lagi nanti ya.")
+        print(f"Error: {e}")
+        await message.answer("Bolu lagi pening, Bos. Cek log atau kunci Gemini!")
 
 async def main():
-    # Hapus Webhook lama agar tidak bertabrakan
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU SUDAH MELEK & SIAP TEMPUR! <<<")
+    print(">>> BOLU SIAP TEMPUR! <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
