@@ -21,7 +21,7 @@ def get_groq_response(user_text):
         try:
             client = Groq(api_key=key)
             completion = client.chat.completions.create(
-                model="llama3-70b-8192",
+                model="llama3-8b-8192",
                 messages=[{"role": "user", "content": user_text}]
             )
             return completion.choices[0].message.content
