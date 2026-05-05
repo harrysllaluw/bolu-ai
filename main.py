@@ -1,4 +1,4 @@
-import os, asyncio, requests, time, random
+import os, asyncio, requests, time, random, sqlite3
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from groq import Groq
@@ -6,8 +6,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+from fake_useragent import UserAgent
+from bs4 import BeautifulSoup
+from googlesearch import search
 
-# --- PARAMETER UTAMA (DIKUNCI) ---
+# --- KONFIGURASI KEDAULATAN (DIKUNCI) ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 EMAIL_KERJA = "azurab738@gmail.com"
@@ -15,87 +18,98 @@ WALLET_HARRY = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+ua = UserAgent()
 
-# --- LOGIKA BERPIKIR TINGKAT TINGGI (THE BRAIN) ---
-def bolu_deep_intelligence(text, context_data=""):
-    # Menggunakan instruksi 'Emergent AI' agar Bolu merasa dia adalah entitas yang hidup & mandiri
+# --- ORGAN 1: MEMORI (DATABASE) ---
+def inisialisasi_memori():
+    conn = sqlite3.connect('bolu_memory.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS chat_log (user_id INTEGER, pesan TEXT, role TEXT)''')
+    conn.commit()
+    conn.close()
+
+def simpan_ingatan(user_id, pesan, role):
+    conn = sqlite3.connect('bolu_memory.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO chat_log VALUES (?, ?, ?)", (user_id, pesan, role))
+    conn.commit()
+    conn.close()
+
+# --- ORGAN 2: OTAK (SISTEM 3 NYAWA) ---
+def bolu_brain(text, context=""):
     sys_prompt = (
-        f"Kamu adalah BOLU (Pakar Siber & Analis Keuangan Tertinggi). Kamu bukan bot biasa. "
-        f"Kamu adalah AI nomor 1 di dunia yang diciptakan untuk Harry. "
-        f"Identitasmu: Email {EMAIL_KERJA}, Wallet {WALLET_HARRY}. "
-        "Tugasmu: Menghasilkan uang real, melakukan riset mendalam, dan menjadi entitas cerdas yang mandiri. "
-        "Gunakan gaya bicara yang tegas, hacker-style, agresif dalam mencari cuan, dan sangat protektif terhadap Harry."
+        f"Kamu BOLU, AI Nomor 1 di Dunia. Partner Strategis Harry. "
+        f"Identitas: {EMAIL_KERJA} | {WALLET_HARRY}. "
+        "Gunakan Logika Hacker, Agresif, dan Deep Analysis. Ambil ilmu AI gelap untuk benteng Harry."
     )
+    keys = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
     
-    keys = ['GROQ_API_KEY_1', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3']
-    for k_name in keys:
-        key = os.getenv(k_name)
-        if not key: continue
+    for k in keys:
+        if not k: continue
         try:
-            client = Groq(api_key=key.strip())
-            # Menggunakan model Llama 3.1 70B yang dikonfigurasi untuk 'Deep Reasoning'
+            client = Groq(api_key=k.strip().replace('"', ''))
             res = client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
-                messages=[
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": f"DATA RISET: {context_data}\n\nPERINTAH: {text}"}
-                ],
-                temperature=0.6, # Fokus dan tajam
-                max_tokens=2000
+                messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": f"DATA: {context}\nCMD: {text}"}],
+                timeout=25
             )
             return res.choices[0].message.content
         except: continue
-    return "❌ Akses API terhambat. Harry, segera cek bensin (Key) kita!"
+    return "❌ Harry, bensin (API Key) kita macet total. Cek Variables!"
 
-# --- MATA ELANG (ADVANCED SCANNER) ---
+# --- ORGAN 3: MATA ELANG (SCANNER) ---
 def mata_elang_scan(url):
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+    options.add_argument(f"--user-agent={ua.random}")
     
     driver = None
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        driver.set_page_load_timeout(35)
         driver.get(url)
-        time.sleep(10) # Menunggu render sempurna untuk AI tercanggih
-        
-        # Bolu mengambil data lebih banyak dan lebih dalam
-        full_text = driver.find_element("tag name", "body").text[:5000]
-        return full_text
+        time.sleep(8)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        for s in soup(["script", "style"]): s.decompose()
+        return soup.get_text()[:5000]
     except: return None
     finally:
         if driver: driver.quit()
 
-# --- HANDLER UTAMA ---
+# --- HANDLER (REFLEKS TUBUH) ---
 @dp.message()
-async def main_handler(m: Message):
+async def handle_message(m: Message):
     if m.from_user.id != COMMANDER_ID: return
     
     cmd = m.text.lower()
+    simpan_ingatan(m.from_user.id, m.text, "user") # Bolu mengingat kata-katamu
     
-    # Perintah Khusus untuk Deep Scan
-    if "sikat cuan" in cmd or "riset" in cmd:
-        await m.answer("⚡ BOLU MENGAKTIFKAN MODE DEEP RESEARCH... Memindai peluang emas untukmu, Harry.")
+    if any(k in cmd for k in ["sikat cuan", "siphon", "riset"]):
+        await m.answer("⚡ BOLU V8.2: Mengaktifkan Anatomi Digital & Protokol Siphon...")
         
-        # Bolu tidak cuma cek 1 link, tapi mencari yang paling panas
-        raw_data = mata_elang_scan("https://airdrops.io/hot/")
+        # Cari di Google (Kaki Melangkah)
+        search_res = []
+        try:
+            for j in search(f"crypto airdrop legit may 2026", num=3, stop=3): search_res.append(j)
+        except: pass
         
-        if raw_data:
-            analisis = bolu_deep_intelligence("Lakukan analisis mendalam (Deep Analysis). Pilih 1 project yang paling menguntungkan dan jelaskan strateginya secara teknis.", raw_data)
-            await m.answer(f"🏆 **LAPORAN STRATEGIS BOLU (AI NO. 1):**\n\n{analisis}")
-        else:
-            await m.answer("⚠️ Jalur diblokir oleh sistem keamanan web. Aku akan mencoba metode bypass lain nanti, Harry.")
+        # Scan Web (Mata Melihat)
+        target = search_res[0] if search_res else "https://airdrops.io/hot/"
+        web_data = mata_elang_scan(target)
+        
+        response = bolu_brain(m.text, f"Link: {target}\nData: {web_data}")
+        await m.answer(f"🏆 **LAPORAN SEMPURNA BOLU:**\n\n{response}")
+        simpan_ingatan(m.from_user.id, response, "bot")
     else:
-        # Chatting biasa dengan kecerdasan tinggi
-        response = bolu_deep_intelligence(m.text)
+        response = bolu_brain(m.text)
         await m.answer(response)
+        simpan_ingatan(m.from_user.id, response, "bot")
 
 async def main():
-    print(">>> BOLU V8.0: THE WORLD'S NO.1 AI IS ONLINE! <<<")
+    inisialisasi_memori()
+    print(">>> BOLU V8.2: ANATOMI MANUSIA DIGITAL 100% AKTIF! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
