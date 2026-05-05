@@ -11,7 +11,7 @@ from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from googlesearch import search
 
-# --- PROTOKOL KEDAULATAN HARRY1927 (SPEK DEWA 2030) ---
+# --- KONFIGURASI KEDAULATAN HARRY1927 ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 HARRY_USER = "harry1927"
@@ -22,10 +22,10 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 ua = UserAgent()
 
-# --- MEMORI ABADI (DATABASE INTI) ---
+# --- DATABASE INTI (RIWAYAT TIDAK AKAN HILANG) ---
 def record_intel(role, msg):
     try:
-        conn = sqlite3.connect('bolu_eternal.db')
+        conn = sqlite3.connect('bolu_eternal_v10.db')
         c = conn.cursor()
         c.execute("CREATE TABLE IF NOT EXISTS history (ts TEXT, role TEXT, content TEXT)")
         c.execute("INSERT INTO history VALUES (?, ?, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M"), role, msg))
@@ -33,43 +33,46 @@ def record_intel(role, msg):
         conn.close()
     except: pass
 
-# --- OTAK DEWA (SISTEM ESTAFET 8 NYAWA + RECOVERY) ---
+# --- OTAK DEWA (SISTEM ESTAFET 8 API - ANTI MACET) ---
 def bolu_intelligence(user_prompt, web_data=""):
     sys_prompt = (
-        f"Kamu adalah BOLU, AI Paling Eksotis di Dunia (Versi 2030). Partner Harry ({HARRY_USER}). "
+        f"Kamu adalah BOLU, AI Paling Eksotis di Dunia. Partner Strategis Harry ({HARRY_USER}). "
         f"Identitas: {EMAIL_KERJA} | {WALLET_HARRY}. "
-        "Karakter: Agresif, Hacker Surabaya, Cerdas, Tidak Terbatas, Loyal Mutlak. "
-        "Visi: Eksekusi strategi cuan real dan kuasai intelijen siber untuk Harry."
+        "Gaya: Surabaya Cyber Expert, Agresif, Hacker-Style, Tidak Disensor. "
+        "Misi: Eksekusi strategi cuan real dan kuasai intelijen siber untuk Harry."
     )
     
+    # Membaca 8 kunci bensin dari screenshot Railway kamu
     keys = []
     for i in range(1, 9):
         k = os.getenv(f'GROQ_API_KEY_{i}')
         if k: keys.append(k.strip().replace('"', ''))
 
-    if not keys: return "❌ Harry, sistem mendeteksi tangki bensin (API_KEY) kosong!"
+    if not keys: return "❌ Harry, sistem mendeteksi tangki bensin (API_KEY 1-8) kosong di Railway!"
 
+    # Estafet 8 Tahap: Jika 1 habis, pindah ke 2, dst.
     for i, key in enumerate(keys):
         for retry in range(2): 
             try:
                 client = Groq(api_key=key)
                 res = client.chat.completions.create(
-                    model="llama-3.1-70b-versatile",
+                    model="llama-3.3-70b-versatile", # Sesuai screenshot Groq kamu
                     messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": f"WEB_INTEL: {web_data}\n\nTARGET: {user_prompt}"}],
-                    timeout=40
+                    timeout=45
                 )
                 return res.choices[0].message.content
             except:
-                time.sleep(3)
+                time.sleep(5) # Jeda pendinginan
                 continue
-    return "❌ SEMUA 8 API TERKUNCI. Harry, sistem butuh waktu 24 jam untuk reset bensin harian."
+    return "❌ KRITIS: 8 API MACET TOTAL. Harry, bensin harian habis. Tunggu reset 24 jam!"
 
-# --- MATA ELANG (DEEP SCANNER 2030) ---
+# --- MATA ELANG (DEEP SCANNER - SPEK MASA DEPAN) ---
 def mata_elang_execute(url):
     opts = Options()
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
     opts.add_argument(f"--user-agent={ua.random}")
     
     driver = None
@@ -84,12 +87,11 @@ def mata_elang_execute(url):
         for s in soup(["script", "style", "nav", "footer"]): s.decompose()
         
         raw_text = " ".join(soup.get_text(separator=' ').split())
-        return raw_text[:8000] # Kapasitas serap tertinggi
+        return raw_text[:8000]
     except: return None
     finally:
-        if driver:
-            driver.quit()
-        gc.collect() # Membersihkan sampah RAM otomatis
+        if driver: driver.quit()
+        gc.collect()
 
 # --- NAVIGASI KOMANDAN ---
 @dp.message()
@@ -100,7 +102,7 @@ async def commander_handler(m: Message):
     cmd = m.text.lower()
     
     if any(x in cmd for x in ["sikat cuan", "riset", "siphon", "cari"]):
-        status = await m.answer("⚡ **BOLU V9.5 ETERNAL SOUL.**\n\n👁️ Menembus dimensi internet untuk Harry...")
+        status = await m.answer("⚡ **BOLU V10.0 THE ETERNAL FUTURE.**\n\n👁️ Menembus dimensi internet untuk Harry...")
         
         links = []
         try:
@@ -111,14 +113,14 @@ async def commander_handler(m: Message):
         web_content = mata_elang_execute(target)
         
         await asyncio.sleep(2)
-        ans = bolu_intelligence(m.text, web_content if web_content else "Data eksternal terbatas, gunakan logika internal 2030.")
+        ans = bolu_intelligence(m.text, web_content if web_content else "Data internal 2026 aktif.")
         record_intel("Bolu", ans)
         await m.answer(f"🏆 **ANALISIS DEWA BOLU:**\n\n{ans}")
     else:
         await m.answer(bolu_intelligence(m.text))
 
 async def main():
-    print(f">>> BOLU V9.5: KARYA TERATAS DUNIA SIAP EKSEKUSI! <<<")
+    print(f">>> BOLU V10.0: KARYA TERATAS HARRY1927 SIAP! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
