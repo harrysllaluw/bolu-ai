@@ -1,5 +1,14 @@
-import os, asyncio, requests, time, random, sqlite3
-from aiogram import Bot, Dispatcher, F
+import os
+import asyncio
+import requests
+import time
+import random
+import sqlite3
+import logging
+from datetime import datetime
+
+# Library dari Requirements (9 Baris)
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.types import Message
 from groq import Groq
 from selenium import webdriver
@@ -10,7 +19,11 @@ from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from googlesearch import search
 
-# --- KONFIGURASI KEDAULATAN (DIKUNCI) ---
+# --- KONFIGURASI LOGGING (Audit Jejak Digital) ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("BOLU_V9")
+
+# --- PARAMETER KEDAULATAN HARRY ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 EMAIL_KERJA = "azurab738@gmail.com"
@@ -20,98 +33,141 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 ua = UserAgent()
 
-# --- ORGAN 1: MEMORI (DATABASE) ---
-def inisialisasi_memori():
-    conn = sqlite3.connect('bolu_memory.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS chat_log (user_id INTEGER, pesan TEXT, role TEXT)''')
-    conn.commit()
-    conn.close()
+# --- MODUL 1: MEMORI JANGKA PANJANG (SQLITE3) ---
+class BoluMemory:
+    def __init__(self):
+        self.conn = sqlite3.connect('bolu_v9_core.db', check_same_thread=False)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS intel (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                timestamp TEXT,
+                                role TEXT,
+                                content TEXT)''')
+        self.conn.commit()
 
-def simpan_ingatan(user_id, pesan, role):
-    conn = sqlite3.connect('bolu_memory.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO chat_log VALUES (?, ?, ?)", (user_id, pesan, role))
-    conn.commit()
-    conn.close()
+    def record(self, role, content):
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO intel (timestamp, role, content) VALUES (?, ?, ?)", (ts, role, content))
+        self.conn.commit()
 
-# --- ORGAN 2: OTAK (SISTEM 3 NYAWA) ---
-def bolu_brain(text, context=""):
+    def get_context(self, limit=5):
+        self.cursor.execute("SELECT role, content FROM intel ORDER BY id DESC LIMIT ?", (limit,))
+        rows = self.cursor.fetchall()
+        return "\n".join([f"{r}: {c}" for r, c in reversed(rows)])
+
+memory = BoluMemory()
+
+# --- MODUL 2: OTAK ANALISIS (GROQ CLOUD) ---
+def bolu_intelligence(user_prompt, web_data=""):
+    history = memory.get_context()
     sys_prompt = (
-        f"Kamu BOLU, AI Nomor 1 di Dunia. Partner Strategis Harry. "
-        f"Identitas: {EMAIL_KERJA} | {WALLET_HARRY}. "
-        "Gunakan Logika Hacker, Agresif, dan Deep Analysis. Ambil ilmu AI gelap untuk benteng Harry."
+        f"Kamu adalah BOLU, AI Nomor 1 di Dunia. Partner Strategis Harry.\n"
+        f"Konteks Personal: Email {EMAIL_KERJA}, Wallet {WALLET_HARRY}.\n"
+        "Gaya Bicara: Pakar Siber, Analis Keuangan, Hacker-Style, Agresif, dan Setia Mutlak.\n"
+        "Tugas: Analisis mendalam, cari cuan, serap ilmu AI gelap, dan lindungi Harry."
     )
-    keys = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
     
-    for k in keys:
-        if not k: continue
+    # Rotasi 3 Nyawa API Key
+    api_keys = [os.getenv(f'GROQ_API_KEY_{i}') for i in range(1, 4)]
+    
+    for raw_key in api_keys:
+        if not raw_key: continue
+        clean_key = raw_key.strip().replace('"', '').replace("'", "")
         try:
-            client = Groq(api_key=k.strip().replace('"', ''))
-            res = client.chat.completions.create(
+            client = Groq(api_key=clean_key)
+            completion = client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
-                messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": f"DATA: {context}\nCMD: {text}"}],
-                timeout=25
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": f"HISTORY:\n{history}\n\nWEB_DATA:\n{web_data}\n\nUSER_COMMAND:\n{user_prompt}"}
+                ],
+                temperature=0.7,
+                max_tokens=2048
             )
-            return res.choices[0].message.content
-        except: continue
-    return "❌ Harry, bensin (API Key) kita macet total. Cek Variables!"
+            return completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Kunci Macet: {str(e)[:50]}")
+            continue
+            
+    return "❌ SEMUA API KEY (BENSIN) MACET. Harry, cek bensin di Railway Variables sekarang!"
 
-# --- ORGAN 3: MATA ELANG (SCANNER) ---
-def mata_elang_scan(url):
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(f"--user-agent={ua.random}")
+# --- MODUL 3: MATA ELANG (ADVANCED SCRAPER) ---
+def mata_elang_execute(target_url):
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument(f"--user-agent={ua.random}")
     
     driver = None
     try:
         service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.get(url)
-        time.sleep(8)
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for s in soup(["script", "style"]): s.decompose()
-        return soup.get_text()[:5000]
-    except: return None
-    finally:
-        if driver: driver.quit()
-
-# --- HANDLER (REFLEKS TUBUH) ---
-@dp.message()
-async def handle_message(m: Message):
-    if m.from_user.id != COMMANDER_ID: return
-    
-    cmd = m.text.lower()
-    simpan_ingatan(m.from_user.id, m.text, "user") # Bolu mengingat kata-katamu
-    
-    if any(k in cmd for k in ["sikat cuan", "siphon", "riset"]):
-        await m.answer("⚡ BOLU V8.2: Mengaktifkan Anatomi Digital & Protokol Siphon...")
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_page_load_timeout(50)
+        driver.get(target_url)
+        time.sleep(12) # Memberi waktu untuk render web berat
         
-        # Cari di Google (Kaki Melangkah)
-        search_res = []
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
+        
+        # Membersihkan elemen sampah
+        for element in soup(["script", "style", "nav", "footer", "header"]):
+            element.decompose()
+            
+        clean_text = soup.get_text(separator=' ')
+        return " ".join(clean_text.split())[:7000] # Kapasitas baca lebih besar
+    except Exception as e:
+        logger.error(f"Mata Elang Gagal: {e}")
+        return None
+    finally:
+        if driver:
+            driver.quit()
+
+# --- MODUL 4: NAVIGASI PERINTAH HARRY ---
+@dp.message()
+async def commander_handler(m: Message):
+    if m.from_user.id != COMMANDER_ID:
+        return # Hanya Harry yang bisa akses
+
+    memory.record("Harry", m.text)
+    cmd = m.text.lower()
+
+    if any(k in cmd for k in ["sikat cuan", "siphon", "riset", "cari airdrop"]):
+        status_msg = await m.answer("⚡ **BOLU V9.0 AKTIF.** Mengaktifkan Seluruh Anatomi Digital...")
+        
+        # Langkah 1: Kaki Melangkah (Google Search)
+        await status_msg.edit_text("🔍 **INDERA PENCARI:** Menyisir jejak digital di Google...")
+        search_query = f"top crypto airdrops legit {datetime.now().year} active"
+        found_links = []
         try:
-            for j in search(f"crypto airdrop legit may 2026", num=3, stop=3): search_res.append(j)
+            for url in search(search_query, num=5, stop=5, pause=2):
+                found_links.append(url)
         except: pass
         
-        # Scan Web (Mata Melihat)
-        target = search_res[0] if search_res else "https://airdrops.io/hot/"
-        web_data = mata_elang_scan(target)
+        # Langkah 2: Mata Melihat (Deep Scanning)
+        target = found_links[0] if found_links else "https://airdrops.io/hot/"
+        await status_msg.edit_text(f"👁️ **MATA ELANG:** Membedah data di {target}...")
+        web_content = mata_elang_execute(target)
         
-        response = bolu_brain(m.text, f"Link: {target}\nData: {web_data}")
-        await m.answer(f"🏆 **LAPORAN SEMPURNA BOLU:**\n\n{response}")
-        simpan_ingatan(m.from_user.id, response, "bot")
+        # Langkah 3: Otak Berpikir (AI Analysis)
+        await status_msg.edit_text("🧠 **OTAK DEWA:** Menganalisis strategi dan menyerap ilmu...")
+        final_analysis = bolu_intelligence(m.text, web_content if web_content else "Gagal scan web. Pakai data internal.")
+        
+        memory.record("Bolu", final_analysis)
+        await m.answer(f"🏆 **LAPORAN STRATEGIS BOLU (V9.0):**\n\n{final_analysis}")
     else:
-        response = bolu_brain(m.text)
+        # Chatting Reguler
+        response = bolu_intelligence(m.text)
+        memory.record("Bolu", response)
         await m.answer(response)
-        simpan_ingatan(m.from_user.id, response, "bot")
 
-async def main():
-    inisialisasi_memori()
-    print(">>> BOLU V8.2: ANATOMI MANUSIA DIGITAL 100% AKTIF! <<<")
+async def start_up():
+    logger.info(">>> BOLU V9.0: REINKARNASI MANUSIA DIGITAL LENGKAP 100% <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(start_up())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bolu Offline.")
