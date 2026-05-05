@@ -9,3 +9,7 @@ googlesearch-python
 fake-useragent
 cloudscraper
 lxml
+aiohttp
+certifi
+h2
+slowapi
