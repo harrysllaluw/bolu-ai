@@ -52,7 +52,7 @@ def safe_browse(url):
     try:
         res = requests.get(url, headers=get_stealth_headers(), timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
-        return soup.get_text()[:2000] # Kapasitas intip lebih besar
+        return soup.get_text()[:2000]
     except: return "Dinding web ini terlalu tebal, saya akan cari celah lain, Harry."
 
 # --- ENGINE LOGIKA ---
@@ -70,6 +70,27 @@ def talk_to_groq(uid, text):
         except: continue
     return "Maaf Harry, pikiran saya sedang terganggu sedikit. Periksa API-mu."
 
+# --- SUNTIKAN KEMANDIRIAN (ITEM 1: TUGAS OTOMATIS) ---
+async def autonomous_work():
+    while True:
+        # Bolu bekerja sendiri setiap 6 jam (21600 detik)
+        await asyncio.sleep(21600) 
+        print(">>> BOLU SEDANG BEKERJA MANDIRI... <<<")
+        
+        # Mencari peluang cuan terbaru tanpa disuruh
+        target_url = "https://coinmarketcap.com/new/" 
+        data = safe_browse(target_url)
+        
+        # Menganalisis data secara mandiri
+        prompt = f"Lakukan analisis mandiri terhadap data ini dan lapor JUJUR ke Harry jika ada peluang income nyata: {data}"
+        report = talk_to_groq(COMMANDER_ID, prompt)
+        
+        # Kirim laporan otomatis ke Telegram Harry
+        try:
+            await bot.send_message(COMMANDER_ID, f"🤖 **LAPORAN KERJA MANDIRI BOLU:**\n\n{report}")
+        except Exception as e:
+            print(f"Gagal kirim laporan mandiri: {e}")
+
 # --- HANDLER KERJA ---
 @dp.message()
 async def h_omni(m: Message):
@@ -77,10 +98,9 @@ async def h_omni(m: Message):
     uid, text = m.from_user.id, m.text.lower()
     if uid != COMMANDER_ID: return
 
-    # FITUR KERJA: Tembus Web & Cari Info Cuan
     if "tembus web" in text or "cari peluang" in text:
         url = m.text.split(" ")[-1] if "http" in m.text else None
-        await m.answer("🔎 **Saya sedang menggerakkan mata digital saya untuk membedah data...**")
+        await m.answer("🔎 **Sedang membedah data secara mendalam...**")
         if url:
             data = safe_browse(url)
             res = talk_to_groq(uid, f"Analisis data nyata ini untuk Harry: {data}")
@@ -88,15 +108,13 @@ async def h_omni(m: Message):
             res = talk_to_groq(uid, "Cari informasi peluang cuan terbaru di internet yang real.")
         return await m.answer(f"🤖 **Hasil Kerja Nyata:**\n\n{res}")
 
-    # FITUR KEAMANAN: Bersihkan Jejak
     if "bersihkan jejak" in text:
         os.system("rm -rf *.mp3 *.ogg *.jpg")
         conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
         c.execute('DELETE FROM chat_history WHERE uid = ?', (uid,))
         conn.commit(); conn.close()
-        return await m.answer("🧹 Jejak dan memori jangka pendek sudah saya musnahkan, Harry. Kita bersih.")
+        return await m.answer("🧹 Jejak dan memori sudah saya musnahkan, Harry. Kita bersih.")
 
-    # RESPONS STANDAR
     await asyncio.sleep(random.uniform(1.2, 2.5))
     await bot.send_chat_action(m.chat.id, "typing")
     res = talk_to_groq(uid, m.text)
@@ -109,9 +127,15 @@ async def h_omni(m: Message):
     else: 
         await m.answer(res)
 
+# --- FUNGSI UTAMA (ITEM 2: AKTIVASI) ---
 async def main():
-    init_db(); await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU V7.1: REAL ACTION & INTEGRITY AKTIF <<<")
+    init_db()
+    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # Menyalakan mode mandiri di latar belakang
+    asyncio.create_task(autonomous_work()) 
+    
+    print(">>> BOLU V7.2: MODE MANDIRI & JUJUR AKTIF <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
