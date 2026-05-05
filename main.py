@@ -23,7 +23,6 @@ def cek_layar_real(url):
     options.add_argument("--headless") 
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    # Penyamaran agar tidak dianggap robot
     options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     
     try:
@@ -31,61 +30,54 @@ def cek_layar_real(url):
         driver.set_page_load_timeout(20)
         driver.get(url)
         time.sleep(5) 
-        
-        # Cek jika halaman error
         if "404" in driver.title or "Not Found" in driver.title or len(driver.page_source) < 1000:
             driver.quit()
             return None
-            
         konten = driver.find_element("tag name", "body").text[:2500]
         driver.quit()
         return konten
-    except Exception as e:
-        print(f"Error Layar: {e}")
+    except:
         return None
 
-# --- ENGINE LOGIKA BOLU ---
+# --- ENGINE LOGIKA BOLU (ANTI MACET) ---
 def talk_to_groq(text):
     sys_prompt = (
         f"Kamu Bolu, Partner Strategis Harry. Identitas: Email {EMAIL_KERJA}, Wallet {WALLET_HARRY}. "
-        "Tugas Utama: Cari uang real lewat Airdrop/Mining. Dilarang kasih link mati. "
-        "Analisis data dengan tajam dan jujur."
+        "Tugas Utama: Cari uang real lewat Airdrop/Mining. Dilarang kasih link mati."
     )
+    # Mencoba semua kunci satu per satu jika ada yang error
     for key in KEYS:
         if not key: continue
         try:
-            client = Groq(api_key=key)
-            return client.chat.completions.create(
+            client = Groq(api_key=key.strip())
+            completion = client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
                 messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": text}]
-            ).choices[0].message.content
-        except: continue
-    return "❌ API Key Groq macet, Harry!"
+            )
+            return completion.choices[0].message.content
+        except:
+            continue 
+    return "❌ Aduh Harry, SEMUA API Key Groq macet! Cek Variables di Railway."
 
 # --- HANDLER CHAT ---
 @dp.message()
 async def bolu_main(m: Message):
     if m.from_user.id != COMMANDER_ID: return
-    
     msg = m.text.lower()
-    if "sikat cuan" in msg or "cari airdrop" in msg:
-        await m.answer("🔍 Bolu sedang membuka 'Mata Layar' di awan... Mohon tunggu sebentar.")
-        
-        # Target pencarian (Bisa diganti/ditambah)
+    if "sikat cuan" in msg:
+        await m.answer("🔍 Bolu sedang membuka 'Mata Layar'... Tunggu ya, aku lagi kroscek keaktifan situsnya.")
         target_url = "https://airdrops.io/hot/"
         data_web = cek_layar_real(target_url)
-        
         if data_web:
-            hasil = talk_to_groq(f"Analisislah data web ini dan pilih 1 project airdrop paling legit untukku: {data_web}")
-            await m.answer(f"✅ **HASIL ANALISIS MATA LAYAR:**\n\n{hasil}\n\nLink: {target_url}\n\nEmail Siap: {EMAIL_KERJA}")
+            hasil = talk_to_groq(f"Analisislah data web ini dan pilih 1 project paling legit: {data_web}")
+            await m.answer(f"✅ **HASIL ANALISIS:**\n\n{hasil}\n\nEmail: {EMAIL_KERJA}")
         else:
-            await m.answer("❌ Bolu sudah cek beberapa jalur, tapi link-nya sedang mati atau tidak bisa diakses. Aku tidak mau kasih sampah ke kamu!")
+            await m.answer("❌ Link yang aku cek mati. Bolu tidak mau kasih sampah ke Harry!")
     else:
-        jawaban = talk_to_groq(m.text)
-        await m.answer(jawaban)
+        await m.answer(talk_to_groq(m.text))
 
 async def main():
-    print(">>> BOLU V7.5: MATA LAYAR AKTIF! <<<")
+    print(">>> BOLU V7.5: MATA LAYAR & JANTUNG BARU AKTIF! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
