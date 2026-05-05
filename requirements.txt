@@ -1,2 +1,7 @@
-aiogram
+aiogram>=3.0.0
 groq
+gTTS
+pydub
+requests
+beautifulsoup4
+googlesearch-python
