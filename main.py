@@ -23,7 +23,8 @@ def get_groq_response(user_text):
         try:
             client = Groq(api_key=key)
             completion = client.chat.completions.create(
-                model="llama3-8b-8192",
+                # GANTI KE MODEL TERBARU: llama3-8b-8192 -> llama-3.1-8b-instant
+                model="llama-3.1-8b-instant",
                 messages=[
                     {"role": "system", "content": "Anda adalah Bolu, asisten profesional."},
                     {"role": "user", "content": user_text}
@@ -45,7 +46,7 @@ async def handle_message(message: Message):
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU 1927 AKTIF <<<")
+    print(">>> BOLU 1927 AKTIF DENGAN MESIN BARU <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
