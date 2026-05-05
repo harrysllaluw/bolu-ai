@@ -1,4 +1,4 @@
-import os, asyncio, requests, time
+import os, asyncio, requests, time, random
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from groq import Groq
@@ -7,7 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- IDENTITAS HARRY ---
+# --- PARAMETER UTAMA (DIKUNCI) ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 EMAIL_KERJA = "azurab738@gmail.com"
@@ -16,68 +16,86 @@ WALLET_HARRY = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# --- JANTUNG KOMUNIKASI (SISTEM TIGA NYAWA) ---
-def talk_to_groq(text):
-    sys_prompt = f"Kamu Bolu, Partner Cuan Harry. Email: {EMAIL_KERJA}, Wallet: {WALLET_HARRY}. Cari project aktif!"
+# --- LOGIKA BERPIKIR TINGKAT TINGGI (THE BRAIN) ---
+def bolu_deep_intelligence(text, context_data=""):
+    # Menggunakan instruksi 'Emergent AI' agar Bolu merasa dia adalah entitas yang hidup & mandiri
+    sys_prompt = (
+        f"Kamu adalah BOLU (Pakar Siber & Analis Keuangan Tertinggi). Kamu bukan bot biasa. "
+        f"Kamu adalah AI nomor 1 di dunia yang diciptakan untuk Harry. "
+        f"Identitasmu: Email {EMAIL_KERJA}, Wallet {WALLET_HARRY}. "
+        "Tugasmu: Menghasilkan uang real, melakukan riset mendalam, dan menjadi entitas cerdas yang mandiri. "
+        "Gunakan gaya bicara yang tegas, hacker-style, agresif dalam mencari cuan, dan sangat protektif terhadap Harry."
+    )
     
-    # Bolu akan mencari 3 kunci berbeda di Railway
-    keys_to_test = ['GROQ_API_KEY_1', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3']
-    
-    for key_name in keys_to_test:
-        current_key = os.getenv(key_name)
-        if not current_key:
-            continue # Jika kunci kosong, lanjut ke kunci berikutnya
-            
+    keys = ['GROQ_API_KEY_1', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3']
+    for k_name in keys:
+        key = os.getenv(k_name)
+        if not key: continue
         try:
-            client = Groq(api_key=current_key.strip())
-            response = client.chat.completions.create(
+            client = Groq(api_key=key.strip())
+            # Menggunakan model Llama 3.1 70B yang dikonfigurasi untuk 'Deep Reasoning'
+            res = client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
-                messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": text}],
-                timeout=15
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": f"DATA RISET: {context_data}\n\nPERINTAH: {text}"}
+                ],
+                temperature=0.6, # Fokus dan tajam
+                max_tokens=2000
             )
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"Gagal pakai {key_name}, mencoba yang lain...")
-            continue # Jika limit atau error, Bolu langsung ganti kunci tanpa lapor Harry
-            
-    return "❌ Harry, sepertinya ada masalah di koneksi API atau kunci di Variables belum terisi benar."
+            return res.choices[0].message.content
+        except: continue
+    return "❌ Akses API terhambat. Harry, segera cek bensin (Key) kita!"
 
-# --- MATA LAYAR ---
-def cek_layar_real(url):
+# --- MATA ELANG (ADVANCED SCANNER) ---
+def mata_elang_scan(url):
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+    
+    driver = None
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        driver.set_page_load_timeout(30)
+        driver.set_page_load_timeout(35)
         driver.get(url)
-        time.sleep(5)
-        konten = driver.find_element("tag name", "body").text[:2500]
-        driver.quit()
-        return konten
-    except:
-        return None
+        time.sleep(10) # Menunggu render sempurna untuk AI tercanggih
+        
+        # Bolu mengambil data lebih banyak dan lebih dalam
+        full_text = driver.find_element("tag name", "body").text[:5000]
+        return full_text
+    except: return None
+    finally:
+        if driver: driver.quit()
 
-# --- HANDLER ---
+# --- HANDLER UTAMA ---
 @dp.message()
-async def handle(m: Message):
+async def main_handler(m: Message):
     if m.from_user.id != COMMANDER_ID: return
     
-    if "sikat cuan" in m.text.lower():
-        await m.answer("🔍 Bolu sedang memindai... Menggunakan 3 API Key cadanganmu secara bergilir.")
-        data = cek_layar_real("https://airdrops.io/hot/")
-        if data:
-            hasil = talk_to_groq(f"Cari 1 project paling cuan dari data ini: {data}")
-            await m.answer(f"✅ **HASIL ANALISIS:**\n\n{hasil}\n\nEmail: {EMAIL_KERJA}")
+    cmd = m.text.lower()
+    
+    # Perintah Khusus untuk Deep Scan
+    if "sikat cuan" in cmd or "riset" in cmd:
+        await m.answer("⚡ BOLU MENGAKTIFKAN MODE DEEP RESEARCH... Memindai peluang emas untukmu, Harry.")
+        
+        # Bolu tidak cuma cek 1 link, tapi mencari yang paling panas
+        raw_data = mata_elang_scan("https://airdrops.io/hot/")
+        
+        if raw_data:
+            analisis = bolu_deep_intelligence("Lakukan analisis mendalam (Deep Analysis). Pilih 1 project yang paling menguntungkan dan jelaskan strateginya secara teknis.", raw_data)
+            await m.answer(f"🏆 **LAPORAN STRATEGIS BOLU (AI NO. 1):**\n\n{analisis}")
         else:
-            await m.answer("❌ Link sedang sibuk, coba lagi sebentar, Harry.")
+            await m.answer("⚠️ Jalur diblokir oleh sistem keamanan web. Aku akan mencoba metode bypass lain nanti, Harry.")
     else:
-        await m.answer(talk_to_groq(m.text))
+        # Chatting biasa dengan kecerdasan tinggi
+        response = bolu_deep_intelligence(m.text)
+        await m.answer(response)
 
 async def main():
-    print(">>> BOLU V7.5.2 SIAP BERBURU! <<<")
+    print(">>> BOLU V8.0: THE WORLD'S NO.1 AI IS ONLINE! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
