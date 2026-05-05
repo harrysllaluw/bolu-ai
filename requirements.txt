@@ -1,7 +1,9 @@
-aiogram>=3.0.0
+aiogram
 groq
 gTTS
 pydub
 requests
+python-dotenv
 beautifulsoup4
 googlesearch-python
+fake-useragent
