@@ -10,7 +10,7 @@ from fake_useragent import UserAgent # Untuk Menyamar
 # --- CONFIGURATION ---
 KEYS = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
 TOKEN = os.getenv('BOT_TOKEN')
-COMMANDER_ID = 8709757602  # TETAP: ID TELEGRAM BOS HARRY
+COMMANDER_ID = 728762443  # TETAP: ID TELEGRAM BOS HARRY
 
 ua = UserAgent()
 bot = Bot(token=TOKEN); dp = Dispatcher()
