@@ -1,11 +1,11 @@
 import os
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher, exceptions
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from groq import Groq
 
-# 1. KONFIGURASI KUNCI
+# 1. AMBIL KUNCI
 KEYS = [
     os.getenv('GROQ_API_KEY_1'),
     os.getenv('GROQ_API_KEY_2'),
@@ -13,39 +13,35 @@ KEYS = [
 ]
 TOKEN = os.getenv('BOT_TOKEN')
 
-logging.basicConfig(level=logging.INFO)
-
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 def get_groq_response(user_text):
-    for i, key in enumerate(KEYS):
-        if not key: continue
+    for key in KEYS:
+        if not key:
+            continue
         try:
             client = Groq(api_key=key)
             completion = client.chat.completions.create(
-                model="llama3-8b-8192", 
+                model="llama3-8b-8192",
                 messages=[
-                    {"role": "system", "content": "Anda adalah Bolu, asisten cerdas yang profesional, tenang, dan solutif. Gunakan bahasa Indonesia."},
+                    {"role": "system", "content": "Anda adalah Bolu, asisten profesional."},
                     {"role": "user", "content": user_text}
                 ]
             )
             return completion.choices[0].message.content
         except Exception as e:
-            logging.error(f"Kunci {i+1} Gagal: {e}")
+            print(f"Error kunci: {e}")
             continue
-            
-    return "Maaf Bos Harry, semua sistem sedang penuh. Mohon tunggu sebentar."
+    return "Maaf Bos Harry, bensin habis. Coba lagi nanti."
 
 @dp.message()
-async def handle_chat(message: Message):
-    if not message.text: return
+async def handle_message(message: Message):
+    if not message.text:
+        return
     await bot.send_chat_action(message.chat.id, "typing")
-    try:
-        response = get_groq_response(message.text)
-        await message.answer(response)
-    except Exception as e:
-        logging.error(f"Error: {e}")
+    res = get_groq_response(message.text)
+    await message.answer(res)
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
