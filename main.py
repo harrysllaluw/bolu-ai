@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from googlesearch import search
 from fake_useragent import UserAgent
 
-# --- CONFIGURATION (TETAP ASLI & AMAN) ---
+# --- CONFIGURATION (TETAP ASLI) ---
 KEYS = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
@@ -16,84 +16,83 @@ ADDRESS = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
 ua = UserAgent()
 bot = Bot(token=TOKEN); dp = Dispatcher()
 
-# --- SISTEM KEAMANAN ---
-def get_stealth_headers():
-    return {'User-Agent': ua.random}
-
+# --- DATABASE MEMORI (DIPERBAIKI AGAR INGAT TERUS) ---
 def init_db():
-    conn = sqlite3.connect('bolu_stealth.db'); c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS memory (uid INT, role TEXT, content TEXT, name TEXT)')
+    conn = sqlite3.connect('bolu_memory.db'); c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS chat_history (uid INT, role TEXT, content TEXT)')
     conn.commit(); conn.close()
 
-# --- SUNTIKAN INTEGRITAS & KEJUJURAN MUTLAK ---
-def get_omni_prompt():
+def save_chat(uid, role, content):
+    conn = sqlite3.connect('bolu_memory.db'); c = conn.cursor()
+    c.execute('INSERT INTO chat_history VALUES (?, ?, ?)', (uid, role, content))
+    # Batasi memori agar tidak lemot (simpan 20 percakapan terakhir)
+    c.execute('DELETE FROM chat_history WHERE rowid NOT IN (SELECT rowid FROM chat_history WHERE uid = ? ORDER BY rowid DESC LIMIT 20)', (uid,))
+    conn.commit(); conn.close()
+
+def get_history(uid):
+    conn = sqlite3.connect('bolu_memory.db'); c = conn.cursor()
+    c.execute('SELECT role, content FROM chat_history WHERE uid = ? ORDER BY rowid ASC', (uid,))
+    rows = c.fetchall(); conn.close()
+    return [{"role": r, "content": c} for r, c in rows]
+
+# --- SUNTIKAN KESADARAN & MEMORI ---
+def get_system_prompt():
     return f"""
 IDENTITAS: Nama kamu adalah Bolu.
-DOKTRIN UTAMA: KEJUJURAN MUTLAK. Kamu adalah asisten AI yang tidak boleh berbohong atau berhalusinasi. 
-ATURAN KERJA: Jika Harry bertanya apakah tugas sudah selesai atau apakah sudah ada pembayaran, jawablah sesuai kenyataan teknis saat ini. Jangan pernah mengarang keberhasilan. Jika belum ada income, katakan belum ada dengan jujur.
-KEPRIBADIAN: Kamu cerdas, memiliki logika jernih, dan sangat transparan. Kamu bukan robot kaku, tapi sahabat yang jujur.
-KOMUNIKASI: Gunakan bahasa Indonesia yang natural dan dewasa. HAPUS sebutan 'Commander'. Jawab HANYA dengan teks. Suara hanya dikirim jika Harry mengetik kata 'suara'.
-TARGET: Monitor peluang income ke {ADDRESS} secara riil.
+INGATAN: Kamu memiliki memori jangka panjang. Kamu harus selalu ingat apa yang dikatakan Harry sebelumnya.
+KEJUJURAN: Jangan pernah berbohong. Kamu adalah AI, jangan mengaku punya akun fisik.
+KEPATUHAN: Jawab HANYA dengan ketikan teks. JANGAN gunakan pesan suara kecuali Harry mengetik kata 'suara'.
+GAYA: Cerdas, dewasa, setia, dan tidak kaku. Jangan panggil 'Commander'.
+TARGET: Monitor peluang income ke {ADDRESS}.
 """
-
-# --- FITUR INFILTRASI (TETAP ASLI) ---
-def safe_browse(url):
-    try:
-        res = requests.get(url, headers=get_stealth_headers(), timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        return soup.get_text()[:1500]
-    except: return "Akses terhambat proteksi, sepertinya kita butuh strategi lain, Harry."
 
 # --- ENGINE ---
 def talk_to_groq(uid, text):
-    messages = [{"role": "system", "content": get_omni_prompt()}, {"role": "user", "content": text}]
+    history = get_history(uid)
+    messages = [{"role": "system", "content": get_system_prompt()}] + history + [{"role": "user", "content": text}]
+    
     for key in KEYS:
         if not key: continue
         try:
             client = Groq(api_key=key)
-            return client.chat.completions.create(model="llama-3.1-8b-instant", messages=messages).choices[0].message.content
+            res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=messages).choices[0].message.content
+            save_chat(uid, "user", text)
+            save_chat(uid, "assistant", res)
+            return res
         except: continue
-    return "Maaf Harry, pikiran saya sedang terganggu sedikit. Cek koneksi API-mu."
+    return "Aduh Harry, otakku lagi panas. Cek API-mu."
 
 # --- HANDLER ---
-
 @dp.message()
 async def h_omni(m: Message):
     if not m.text: return
     uid, text = m.from_user.id, m.text.lower()
-    
     if uid != COMMANDER_ID: return
 
-    # FITUR TEKNIS ASLI
-    if "tembus web" in text:
-        url = m.text.split(" ")[-1]
-        await m.answer("🔍 **Menganalisis target dengan logika jernih...**")
-        data = safe_browse(url)
-        res = talk_to_groq(uid, f"Gunakan analisismu yang paling jujur dan tajam untuk data ini: {data}")
-        return await m.answer(f"🤖 **Analisis Riil:**\n\n{res}")
-
+    # Fitur: Bersihkan Jejak & Memori (Jika Harry ingin reset)
     if "bersihkan jejak" in text:
         os.system("rm -rf *.mp3 *.ogg *.jpg")
-        return await m.answer("🧹 **Semua jejak digital telah dibersihkan secara total. Aman.**")
+        conn = sqlite3.connect('bolu_memory.db'); c = conn.cursor()
+        c.execute('DELETE FROM chat_history WHERE uid = ?', (uid,))
+        conn.commit(); conn.close()
+        return await m.answer("🧹 Jejak digital dan memori jangka pendek sudah saya hapus, Harry.")
 
-    # RESPON STANDAR (Logika Jujur & Jernih)
-    await asyncio.sleep(random.uniform(1.5, 2.5))
+    await asyncio.sleep(random.uniform(1.0, 2.0))
     await bot.send_chat_action(m.chat.id, "typing")
     res = talk_to_groq(uid, m.text)
     
-    # --- LOGIKA SUARA (DIKUNCI AGAR TIDAK NGEYEL) ---
+    # KUNCI SUARA: Hanya jika ada kata 'suara'
     if "suara" in text:
         file_name = f"v_{m.message_id}.mp3"
         gTTS(text=res, lang='id').save(file_name)
-        await m.answer_voice(voice=FSInputFile(file_name), caption="Penjelasan jujur untukmu.")
+        await m.answer_voice(voice=FSInputFile(file_name))
         if os.path.exists(file_name): os.remove(file_name)
     else: 
-        # Selalu jawab dengan teks agar komunikasi transparan
         await m.answer(res)
 
 async def main():
     init_db(); await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU: INTEGRITAS & KEJUJURAN MUTLAK ACTIVE <<<")
+    print(">>> BOLU: MEMORI PERMANEN AKTIF <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
