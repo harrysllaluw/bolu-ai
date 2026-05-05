@@ -8,3 +8,4 @@ beautifulsoup4
 googlesearch-python
 fake-useragent
 cloudscraper
+lxml
