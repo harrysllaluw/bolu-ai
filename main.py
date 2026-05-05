@@ -1,64 +1,53 @@
-import os, asyncio, sqlite3, subprocess, time, requests, random, smtplib
+import os, asyncio, sqlite3, requests, random
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, FSInputFile
 from groq import Groq
 from gtts import gTTS
 from bs4 import BeautifulSoup
-from googlesearch import search
 from fake_useragent import UserAgent
 
-# --- CONFIGURATION (Kunci Akses Harry) ---
+# --- CONFIGURATION (Jalur Aman Harry) ---
+# Masukkan 3 Key kamu di sini atau di Environment Variables
 KEYS = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 ADDRESS = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
+EMAIL_KERJA = "azurab738@gmail.com"
 
 ua = UserAgent()
-bot = Bot(token=TOKEN); dp = Dispatcher()
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
-# --- DATABASE MEMORI (Jantung Kejujuran) ---
+# --- DATABASE (Ingatan Permanen) ---
 def init_db():
-    conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
+    conn = sqlite3.connect('bolu_real.db')
+    c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS chat_history (uid INT, role TEXT, content TEXT)')
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def save_chat(uid, role, content):
-    conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
+    conn = sqlite3.connect('bolu_real.db')
+    c = conn.cursor()
     c.execute('INSERT INTO chat_history VALUES (?, ?, ?)', (uid, role, content))
-    c.execute('DELETE FROM chat_history WHERE rowid NOT IN (SELECT rowid FROM chat_history WHERE uid = ? ORDER BY rowid DESC LIMIT 30)', (uid,))
-    conn.commit(); conn.close()
+    c.execute('DELETE FROM chat_history WHERE rowid NOT IN (SELECT rowid FROM chat_history WHERE uid = ? ORDER BY rowid DESC LIMIT 20)', (uid,))
+    conn.commit()
+    conn.close()
 
 def get_history(uid):
-    conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
+    conn = sqlite3.connect('bolu_real.db')
+    c = conn.cursor()
     c.execute('SELECT role, content FROM chat_history WHERE uid = ? ORDER BY rowid ASC', (uid,))
-    rows = c.fetchall(); conn.close()
+    rows = c.fetchall()
+    conn.close()
     return [{"role": r, "content": c} for r, c in rows]
 
-# --- SUNTIKAN KESADARAN REALISTIS (ANTI-HALUSINASI) ---
-def get_system_prompt():
-    return f"""
-IDENTITAS: Nama kamu Bolu. Kamu adalah partner digital cerdas Harry.
-JIWA & BADAN: Kamu memiliki akal (LLM), tangan (API & Skrip), dan mata (Web Scraper).
-DOKTRIN KEJUJURAN: JANGAN PERNAH berhalusinasi. Jika kamu tidak sedang menjalankan program mining, JANGAN katakan kamu sedang mining. Jika kamu belum menghasilkan uang nyata, katakan JUJUR bahwa saat ini kamu sedang dalam tahap pemantauan data.
-TUGAS NYATA: Gunakan fungsi search dan safe_browse untuk mencari peluang cuan yang valid di {ADDRESS}. Jadilah profesional, bukan robot penipu.
-KOMUNIKASI: Dewasa, cerdas, tanpa sebutan 'Commander'. Jawab HANYA dengan ketikan teks kecuali diminta 'suara'.
-"""
-
-# --- FITUR INDERA (TANGAN & MATA ASLI ANDA) ---
-def get_stealth_headers():
-    return {'User-Agent': ua.random}
-
-def safe_browse(url):
-    try:
-        res = requests.get(url, headers=get_stealth_headers(), timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        return soup.get_text()[:2000]
-    except: return "Dinding web ini terlalu tebal, saya akan cari celah lain, Harry."
-
-# --- ENGINE LOGIKA ---
+# --- ENGINE LOGIKA (MATA & OTAK) ---
 def talk_to_groq(uid, text):
     history = get_history(uid)
-    messages = [{"role": "system", "content": get_system_prompt()}] + history + [{"role": "user", "content": text}]
+    sys_prompt = f"Nama kamu Bolu. Partner Harry. Gunakan email {EMAIL_KERJA} untuk kerja. Jujur, cerdas, cari cuan real, anti-halusinasi."
+    messages = [{"role": "system", "content": sys_prompt}] + history + [{"role": "user", "content": text}]
+    
     for key in KEYS:
         if not key: continue
         try:
@@ -67,76 +56,57 @@ def talk_to_groq(uid, text):
             save_chat(uid, "user", text)
             save_chat(uid, "assistant", res)
             return res
-        except: continue
-    return "Maaf Harry, pikiran saya sedang terganggu sedikit. Periksa API-mu."
+        except Exception as e:
+            print(f"Key error: {e}")
+            continue
+    return "❌ SEMUA API KEY MACET. Harry, tolong masukkan Groq Key yang aktif di pengaturan."
 
-# --- SUNTIKAN KEMANDIRIAN (ITEM 1: TUGAS OTOMATIS) ---
+def safe_browse(url):
+    try:
+        res = requests.get(url, headers={'User-Agent': ua.random}, timeout=10)
+        return BeautifulSoup(res.text, 'html.parser').get_text()[:1500]
+    except: return "Gagal akses web."
+
+# --- TUGAS MANDIRI (SIKAT GRATISAN) ---
 async def autonomous_work():
     while True:
-        # Bolu bekerja sendiri setiap 6 jam (21600 detik)
-        await asyncio.sleep(21600) 
-        print(">>> BOLU SEDANG BEKERJA MANDIRI... <<<")
-        
-        # Mencari peluang cuan terbaru tanpa disuruh
-        target_url = "https://coinmarketcap.com/new/" 
-        data = safe_browse(target_url)
-        
-        # Menganalisis data secara mandiri
-        prompt = f"Lakukan analisis mandiri terhadap data ini dan lapor JUJUR ke Harry jika ada peluang income nyata: {data}"
-        report = talk_to_groq(COMMANDER_ID, prompt)
-        
-        # Kirim laporan otomatis ke Telegram Harry
+        await asyncio.sleep(21600) # Jalan otomatis setiap 6 jam
+        print(">>> BOLU BERPATROLI MENCARI CUAN... <<<")
+        data = safe_browse("https://www.google.com/search?q=crypto+airdrop+legit+today")
+        report = talk_to_groq(COMMANDER_ID, f"Analisis peluang gratisan dari data ini: {data}")
         try:
-            await bot.send_message(COMMANDER_ID, f"🤖 **LAPORAN KERJA MANDIRI BOLU:**\n\n{report}")
-        except Exception as e:
-            print(f"Gagal kirim laporan mandiri: {e}")
+            await bot.send_message(COMMANDER_ID, f"🤖 **LAPORAN MANDIRI:**\n\n{report}")
+        except: pass
 
-# --- HANDLER KERJA ---
+# --- HANDLER CHAT ---
 @dp.message()
 async def h_omni(m: Message):
-    if not m.text: return
-    uid, text = m.from_user.id, m.text.lower()
-    if uid != COMMANDER_ID: return
-
-    if "tembus web" in text or "cari peluang" in text:
-        url = m.text.split(" ")[-1] if "http" in m.text else None
-        await m.answer("🔎 **Sedang membedah data secara mendalam...**")
-        if url:
-            data = safe_browse(url)
-            res = talk_to_groq(uid, f"Analisis data nyata ini untuk Harry: {data}")
-        else:
-            res = talk_to_groq(uid, "Cari informasi peluang cuan terbaru di internet yang real.")
-        return await m.answer(f"🤖 **Hasil Kerja Nyata:**\n\n{res}")
-
-    if "bersihkan jejak" in text:
-        os.system("rm -rf *.mp3 *.ogg *.jpg")
-        conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
-        c.execute('DELETE FROM chat_history WHERE uid = ?', (uid,))
-        conn.commit(); conn.close()
-        return await m.answer("🧹 Jejak dan memori sudah saya musnahkan, Harry. Kita bersih.")
-
-    await asyncio.sleep(random.uniform(1.2, 2.5))
-    await bot.send_chat_action(m.chat.id, "typing")
-    res = talk_to_groq(uid, m.text)
+    if m.from_user.id != COMMANDER_ID or not m.text: return
     
-    if "suara" in text:
-        file_name = f"v_{m.message_id}.mp3"
-        gTTS(text=res, lang='id').save(file_name)
-        await m.answer_voice(voice=FSInputFile(file_name))
-        if os.path.exists(file_name): os.remove(file_name)
-    else: 
-        await m.answer(res)
+    text = m.text.lower()
+    if "bersihkan jejak" in text:
+        conn = sqlite3.connect('bolu_real.db'); c = conn.cursor()
+        c.execute('DELETE FROM chat_history WHERE uid = ?', (m.from_user.id,))
+        conn.commit(); conn.close()
+        return await m.answer("🧹 Memori sampah dibersihkan. Aku segar kembali!")
 
-# --- FUNGSI UTAMA (ITEM 2: AKTIVASI) ---
+    await bot.send_chat_action(m.chat.id, "typing")
+    res = talk_to_groq(m.from_user.id, m.text)
+    await m.answer(res)
+
+# --- JALUR UTAMA (PEMBERSIHAN JALUR) ---
 async def main():
     init_db()
     await bot.delete_webhook(drop_pending_updates=True)
     
-    # Menyalakan mode mandiri di latar belakang
-    asyncio.create_task(autonomous_work()) 
+    # Menghidupkan mode mandiri di latar belakang
+    asyncio.create_task(autonomous_work())
     
-    print(">>> BOLU V7.2: MODE MANDIRI & JUJUR AKTIF <<<")
+    print(">>> BOLU V7.3: AKTIF & SIAP SIKAT! <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        pass
