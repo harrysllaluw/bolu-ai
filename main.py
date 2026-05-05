@@ -7,13 +7,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- IDENTITAS MUTLAK HARRY ---
+# --- IDENTITAS HARRY ---
 TOKEN = os.getenv('BOT_TOKEN')
-KEYS = [
-    os.getenv('GROQ_API_KEY_1'), 
-    os.getenv('GROQ_API_KEY_2'), 
-    os.getenv('GROQ_API_KEY_3')
-]
 COMMANDER_ID = 728762443 
 EMAIL_KERJA = "azurab738@gmail.com"
 WALLET_HARRY = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
@@ -21,96 +16,70 @@ WALLET_HARRY = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# --- FUNGSI MATA LAYAR (VERSI PALING TELITI) ---
-def cek_layar_real(url):
-    options = Options()
-    options.add_argument("--headless=new") # Mode awan terbaru
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
-    driver = None
-    try:
-        # Menggunakan jalur otomatis yang paling stabil di Railway
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.set_page_load_timeout(30) # Lebih sabar menunggu web berat
-        
-        driver.get(url)
-        time.sleep(7) # Waktu render lebih lama agar tidak halusinasi
-        
-        # Cek apakah situs benar-benar ada isinya
-        if len(driver.page_source) < 1000 or "404" in driver.title:
-            return None
-            
-        konten = driver.find_element("tag name", "body").text[:3000]
-        return konten
-    except Exception as e:
-        print(f"DEBUG: Kesalahan Layar -> {e}")
-        return None
-    finally:
-        if driver:
-            driver.quit()
-
-# --- JANTUNG KOMUNIKASI (SISTEM 3 NYAWA ANTI-MACET) ---
+# --- JANTUNG KOMUNIKASI (SISTEM TIGA NYAWA) ---
 def talk_to_groq(text):
-    sys_prompt = (
-        f"Kamu Bolu, Partner Strategis Harry. Identitas: Email {EMAIL_KERJA}, Wallet {WALLET_HARRY}. "
-        "Tugas: Cari uang real dari Airdrop/Mining aktif. Dilarang kasih link mati atau bohong. "
-        "Jika Harry minta 'Sikat Cuan', pilihkan project yang paling legit dari data yang ada."
-    )
+    sys_prompt = f"Kamu Bolu, Partner Cuan Harry. Email: {EMAIL_KERJA}, Wallet: {WALLET_HARRY}. Cari project aktif!"
     
-    for i, key in enumerate(KEYS):
-        if not key or len(key.strip()) < 10:
-            continue
+    # Bolu akan mencari 3 kunci berbeda di Railway
+    keys_to_test = ['GROQ_API_KEY_1', 'GROQ_API_KEY_2', 'GROQ_API_KEY_3']
+    
+    for key_name in keys_to_test:
+        current_key = os.getenv(key_name)
+        if not current_key:
+            continue # Jika kunci kosong, lanjut ke kunci berikutnya
+            
         try:
-            client = Groq(api_key=key.strip())
+            client = Groq(api_key=current_key.strip())
             response = client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
-                messages=[
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": text}
-                ],
-                timeout=20
+                messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": text}],
+                timeout=15
             )
             return response.choices[0].message.content
         except Exception as e:
-            print(f"LOG: Key ke-{i+1} gagal/limit. Mencoba kunci lain...")
-            continue
+            print(f"Gagal pakai {key_name}, mencoba yang lain...")
+            continue # Jika limit atau error, Bolu langsung ganti kunci tanpa lapor Harry
             
-    return "❌ SEMUA API Key Groq macet, Harry! Tolong cek limit di Groq Console."
+    return "❌ Harry, sepertinya ada masalah di koneksi API atau kunci di Variables belum terisi benar."
 
-# --- NAVIGASI PERINTAH ---
+# --- MATA LAYAR ---
+def cek_layar_real(url):
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.set_page_load_timeout(30)
+        driver.get(url)
+        time.sleep(5)
+        konten = driver.find_element("tag name", "body").text[:2500]
+        driver.quit()
+        return konten
+    except:
+        return None
+
+# --- HANDLER ---
 @dp.message()
-async def bolu_handler(m: Message):
+async def handle(m: Message):
     if m.from_user.id != COMMANDER_ID: return
     
-    cmd = m.text.lower()
-    
-    if "sikat cuan" in cmd or "cari project" in cmd:
-        await m.answer("🔍 Bolu sedang memindai internet dengan Mata Layar... Mohon tunggu (sekitar 15-30 detik).")
-        
-        # Sumber data cuan yang real
-        target = "https://airdrops.io/latest/"
-        hasil_scan = cek_layar_real(target)
-        
-        if hasil_scan:
-            analisis = talk_to_groq(f"Analisislah data dari {target} ini. Cari 1 project airdrop yang pendaftarannya simpel dan paling cuan. Data: {hasil_scan}")
-            await m.answer(f"✅ **HASIL SCAN MATA LAYAR:**\n\n{analisis}\n\nEmail Kerja: {EMAIL_KERJA}")
+    if "sikat cuan" in m.text.lower():
+        await m.answer("🔍 Bolu sedang memindai... Menggunakan 3 API Key cadanganmu secara bergilir.")
+        data = cek_layar_real("https://airdrops.io/hot/")
+        if data:
+            hasil = talk_to_groq(f"Cari 1 project paling cuan dari data ini: {data}")
+            await m.answer(f"✅ **HASIL ANALISIS:**\n\n{hasil}\n\nEmail: {EMAIL_KERJA}")
         else:
-            await m.answer("❌ Bolu tidak menemukan project aktif yang layak dilaporkan. Aku tidak mau memberimu link mati.")
+            await m.answer("❌ Link sedang sibuk, coba lagi sebentar, Harry.")
     else:
-        jawaban = talk_to_groq(m.text)
-        await m.answer(jawaban)
+        await m.answer(talk_to_groq(m.text))
 
 async def main():
-    print(">>> BOLU V7.5.1: SISTEM TERVERIFIKASI & AKTIF! <<<")
+    print(">>> BOLU V7.5.2 SIAP BERBURU! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        print("Bot dimatikan.")
+    asyncio.run(main())
