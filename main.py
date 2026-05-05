@@ -1,131 +1,104 @@
-import os, asyncio, requests, time, random, sqlite3, sys, gc
+import os, asyncio, requests, sqlite3, sys, cloudscraper, random
 from datetime import datetime
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from groq import Groq
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from googlesearch import search
+from fake_useragent import UserAgent
 
-# --- KONFIGURASI KEDAULATAN HARRY1927 ---
+# --- IDENTITAS KEDAULATAN HARRY1927 V11.1 FINAL ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 HARRY_USER = "harry1927"
-EMAIL_KERJA = "azurab738@gmail.com"
+EMAIL_HARRY = "azurab738@gmail.com"
 WALLET_HARRY = "0x7e4a3979f8497da4dde80a7c08269d73f58fb788"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 ua = UserAgent()
 
-# --- DATABASE INTI (RIWAYAT TIDAK AKAN HILANG) ---
 def record_intel(role, msg):
     try:
-        conn = sqlite3.connect('bolu_eternal_v10.db')
+        conn = sqlite3.connect('bolu_titan.db')
         c = conn.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS history (ts TEXT, role TEXT, content TEXT)")
-        c.execute("INSERT INTO history VALUES (?, ?, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M"), role, msg))
+        c.execute("CREATE TABLE IF NOT EXISTS intel (ts TEXT, role TEXT, content TEXT)")
+        c.execute("INSERT INTO intel VALUES (?, ?, ?)", (datetime.now().strftime("%H:%M:%S"), role, msg))
         conn.commit()
         conn.close()
     except: pass
 
-# --- OTAK DEWA (SISTEM ESTAFET 8 API - ANTI MACET) ---
-def bolu_intelligence(user_prompt, web_data=""):
-    sys_prompt = (
-        f"Kamu adalah BOLU, AI Paling Eksotis di Dunia. Partner Strategis Harry ({HARRY_USER}). "
-        f"Identitas: {EMAIL_KERJA} | {WALLET_HARRY}. "
-        "Gaya: Surabaya Cyber Expert, Agresif, Hacker-Style, Tidak Disensor. "
-        "Misi: Eksekusi strategi cuan real dan kuasai intelijen siber untuk Harry."
+# --- MESIN PENCARI CLOUD-STEALER (MATA ELANG) ---
+def mata_elang_execute(url):
+    try:
+        # Menyamar sebagai browser asli untuk menembus proteksi dev besar
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+        res = scraper.get(url, timeout=20)
+        if res.status_code == 200:
+            soup = BeautifulSoup(res.text, 'lxml')
+            for s in soup(["script", "style", "nav", "footer", "header"]): s.decompose()
+            return " ".join(soup.get_text().split())[:8000]
+        return None
+    except: return None
+
+# --- OTAK INTI (MULTI-API LOAD BALANCER) ---
+def bolu_brain(prompt, web_context=""):
+    sys_msg = (
+        f"Kamu BOLU V11.1 TITAN, AI milik Harry ({HARRY_USER}). "
+        "Karakter: Hacker Surabaya, Profesional, Cerdas, Agresif, JUJUR TOTAL. "
+        f"Aset: Email {EMAIL_HARRY}, Wallet {WALLET_HARRY}. "
+        "Dilarang Halusinasi! Jika data tidak valid, cari sampai dapat atau katakan sedang riset. "
+        "Gunakan data web yang diberikan untuk memberikan link cuan real-time."
     )
     
-    # Membaca 8 kunci bensin dari screenshot Railway kamu
-    keys = []
-    for i in range(1, 9):
-        k = os.getenv(f'GROQ_API_KEY_{i}')
-        if k: keys.append(k.strip().replace('"', ''))
+    keys = [os.getenv(f'GROQ_API_KEY_{i}') for i in range(1, 11) if os.getenv(f'GROQ_API_KEY_{i}')]
+    if not keys: return "❌ Harry, API Key tidak terdeteksi di Railway!"
 
-    if not keys: return "❌ Harry, sistem mendeteksi tangki bensin (API_KEY 1-8) kosong di Railway!"
+    for key in keys:
+        try:
+            client = Groq(api_key=key.strip().replace('"', ''))
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": f"WEB_DATA: {web_context}\n\nUSER_CMD: {prompt}"}],
+                temperature=0.3 # Suhu rendah agar tidak berhalusinasi
+            )
+            return response.choices[0].message.content
+        except: continue
+    return "❌ Akses Otak Terputus (API Limit)."
 
-    # Estafet 8 Tahap: Jika 1 habis, pindah ke 2, dst.
-    for i, key in enumerate(keys):
-        for retry in range(2): 
-            try:
-                client = Groq(api_key=key)
-                res = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile", # Sesuai screenshot Groq kamu
-                    messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": f"WEB_INTEL: {web_data}\n\nTARGET: {user_prompt}"}],
-                    timeout=45
-                )
-                return res.choices[0].message.content
-            except:
-                time.sleep(5) # Jeda pendinginan
-                continue
-    return "❌ KRITIS: 8 API MACET TOTAL. Harry, bensin harian habis. Tunggu reset 24 jam!"
-
-# --- MATA ELANG (DEEP SCANNER - SPEK MASA DEPAN) ---
-def mata_elang_execute(url):
-    opts = Options()
-    opts.add_argument("--headless=new")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument(f"--user-agent={ua.random}")
-    
-    driver = None
-    try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=opts)
-        driver.set_page_load_timeout(60)
-        driver.get(url)
-        time.sleep(15) 
-        
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for s in soup(["script", "style", "nav", "footer"]): s.decompose()
-        
-        raw_text = " ".join(soup.get_text(separator=' ').split())
-        return raw_text[:8000]
-    except: return None
-    finally:
-        if driver: driver.quit()
-        gc.collect()
-
-# --- NAVIGASI KOMANDAN ---
 @dp.message()
-async def commander_handler(m: Message):
+async def main_handler(m: Message):
     if m.from_user.id != COMMANDER_ID: return
     
     record_intel("Harry", m.text)
-    cmd = m.text.lower()
+    text = m.text.lower()
     
-    if any(x in cmd for x in ["sikat cuan", "riset", "siphon", "cari"]):
-        status = await m.answer("⚡ **BOLU V10.0 THE ETERNAL FUTURE.**\n\n👁️ Menembus dimensi internet untuk Harry...")
+    # Trigger Pencarian Otomatis untuk kata kunci Cuan
+    if any(x in text for x in ["cari", "cek", "sikat", "update", "riset"]):
+        load = await m.answer("📡 **TITAN SCANNING IN PROGRESS...**\nMenembus firewall data real-time.")
         
-        links = []
+        search_results = []
         try:
-            for url in search(f"crypto airdrop potential May 2026", num=3, stop=3): links.append(url)
+            # Mengambil 3 link teratas dari Google
+            for url in search(m.text, num=5, stop=3, pause=2):
+                if "google" not in url: search_results.append(url)
         except: pass
         
-        target = links[0] if links else "https://airdrops.io/hot/"
-        web_content = mata_elang_execute(target)
+        context = ""
+        if search_results:
+            raw_web = mata_elang_execute(search_results[0])
+            context = f"SOURCE: {search_results[0]}\nCONTENT: {raw_web}"
         
-        await asyncio.sleep(2)
-        ans = bolu_intelligence(m.text, web_content if web_content else "Data internal 2026 aktif.")
-        record_intel("Bolu", ans)
-        await m.answer(f"🏆 **ANALISIS DEWA BOLU:**\n\n{ans}")
+        answer = bolu_brain(m.text, context)
+        record_intel("Bolu", answer)
+        await m.answer(f"🏆 **LAPORAN UNIT TITAN:**\n\n{answer}")
     else:
-        await m.answer(bolu_intelligence(m.text))
+        await m.answer(bolu_brain(m.text))
 
-async def main():
-    print(f">>> BOLU V10.0: KARYA TERATAS HARRY1927 SIAP! <<<")
+async def start_bot():
+    print(">>> BOLU TITAN V11.1 ONLINE: WANI! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except:
-        sys.exit()
+    asyncio.run(start_bot())
