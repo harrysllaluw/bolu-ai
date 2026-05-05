@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from groq import Groq
 
-# Ambil semua kunci dari Railway
+# Mengambil 3 bensin dari Railway
 KEYS = [
     os.getenv('GROQ_API_KEY_1'),
     os.getenv('GROQ_API_KEY_2'),
@@ -16,20 +16,20 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 def get_groq_response(user_text):
-    # Mencoba satu per satu kunci jika terjadi error limit
+    # Mencoba satu per satu kunci jika yang lain limit
     for key in KEYS:
         if not key: continue
         try:
             client = Groq(api_key=key)
             completion = client.chat.completions.create(
-                model="llama3-8b-8192",  # Model ini lebih lancar untuk akun gratis
+                model="llama3-8b-8192", # Pakai 8b biar irit bensin
                 messages=[{"role": "user", "content": user_text}]
             )
             return completion.choices[0].message.content
         except Exception as e:
-            print(f"Kunci bermasalah, pindah ke kunci berikutnya... Error: {e}")
+            print(f"Kunci bermasalah, pindah ke cadangan... Error: {e}")
             continue
-    return "Waduh Bos Harry, semua 'bensin' (API Key) sudah habis. Coba lagi nanti ya!"
+    return "Waduh Bos Harry, semua 'bensin' (API Key) habis. Coba lagi nanti ya!"
 
 @dp.message()
 async def handle_chat(message: Message):
