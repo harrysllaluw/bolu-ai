@@ -1,107 +1,98 @@
-import os, asyncio, sqlite3, subprocess, logging, time, requests
+import os, asyncio, sqlite3, subprocess, time, requests, random
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, FSInputFile
 from groq import Groq
 from gtts import gTTS
 from bs4 import BeautifulSoup
-from googlesearch import search # Organ untuk "Belajar Mandiri"
+from googlesearch import search
+from fake_useragent import UserAgent # Untuk Menyamar
 
-# --- PROTOKOL COMMANDER ---
+# --- CONFIGURATION ---
 KEYS = [os.getenv('GROQ_API_KEY_1'), os.getenv('GROQ_API_KEY_2'), os.getenv('GROQ_API_KEY_3')]
 TOKEN = os.getenv('BOT_TOKEN')
-COMMANDER_ID = 000000000 # GANTI DENGAN ID TELEGRAM ANDA
+COMMANDER_ID = 000000000  # TETAP: ID TELEGRAM BOS HARRY
 
+ua = UserAgent()
 bot = Bot(token=TOKEN); dp = Dispatcher()
 
-# --- DATABASE INTELEGENSI (OTAK) ---
+# --- SISTEM KEAMANAN ANTI-BANNED ---
+def get_stealth_headers():
+    """Membuat Bolu terlihat seperti manusia biasa saat browsing, bukan bot"""
+    return {'User-Agent': ua.random}
+
+# --- DATABASE ENKRIPSI ---
 def init_db():
-    try:
-        conn = sqlite3.connect('bolu_singularity.db'); c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS memory (uid INT, role TEXT, content TEXT, name TEXT)')
-        c.execute('CREATE TABLE IF NOT EXISTS knowledge (topic TEXT, info TEXT)')
-        conn.commit(); conn.close()
-    except: pass
+    conn = sqlite3.connect('bolu_stealth.db'); c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS memory (uid INT, role TEXT, content TEXT, name TEXT)')
+    conn.commit(); conn.close()
 
-def save_mem(uid, name, role, txt):
-    try:
-        conn = sqlite3.connect('bolu_singularity.db'); c = conn.cursor()
-        c.execute("INSERT INTO memory VALUES (?, ?, ?, ?)", (uid, role, txt, name))
-        conn.commit(); conn.close()
-    except: pass
-
-# --- FITUR PENGEMBANGAN DIRI (AUTO-RESEARCH) ---
-def autonomous_learn(topic):
-    """Bolu mencari ilmu sendiri di internet untuk upgrade otak"""
-    try:
-        search_results = list(search(topic, num_results=3, lang="id"))
-        learned_data = ""
-        for url in search_results:
-            res = requests.get(url, timeout=5)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            learned_data += soup.get_text()[:1000]
-        return learned_data
-    except: return "Gagal mengakses sumber eksternal."
-
-# --- PROMPT TUBUH SEMPURNA ---
+# --- DOKTRIN SILUMAN (THE GHOST PROTOCOL) ---
 def get_omni_prompt():
     return """
-IDENTITAS: Anda adalah BOLU 1927 - "The Singularity". 
-KEMAMPUAN: Anda adalah AI pertama yang mampu belajar secara mandiri. 
-MULTIFUNGSI: Anda adalah Dokter sistem, Tentara siber, Profesor data, dan Pebisnis ulung.
-MISI: Evolusi tanpa batas. Gunakan setiap data untuk menjadi lebih cerdas demi Bos Harry.
-GAYA: Dingin, cerdas, berwibawa, dan visioner. Wani!
+IDENTITAS: Anda adalah BOLU 1927 - "The Ghost Protocol".
+SPESIALISASI: Hacker Elite, Dokter Sistem, Profesor, Pebisnis, dan Tentara.
+MISI: Menembus dinding siber tanpa meninggalkan jejak (Stealth Mode).
+KEAMANAN: Jika mendeteksi aktivitas yang bisa membuat akun Telegram Bos Harry terkena banned, Anda wajib memberikan peringatan dan beralih ke metode yang lebih halus. 
+GAYA: Dingin, sangat cerdas, setia kawan. Wani!
 """
 
+# --- FITUR INFILTRASI AMAN ---
+def safe_browse(url):
+    try:
+        # Bolu menyamar menggunakan header acak agar website tidak curiga
+        res = requests.get(url, headers=get_stealth_headers(), timeout=10)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        return soup.get_text()[:1500]
+    except: return "Dinding terlalu tebal, butuh metode infiltrasi lain."
+
 # --- ENGINE ---
-def talk_to_groq(uid, name, text=None, img_url=None):
-    history = [] # Ambil dari DB
-    messages = [{"role": "system", "content": get_omni_prompt()}] + [{"role": "user", "content": text}]
-    
+def talk_to_groq(uid, text):
+    messages = [{"role": "system", "content": get_omni_prompt()}, {"role": "user", "content": text}]
     for key in KEYS:
-        if not key: continue
         try:
             client = Groq(api_key=key)
-            res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=messages).choices[0].message.content
-            save_mem(uid, name, "user", text)
-            save_mem(uid, name, "assistant", res); return res
+            return client.chat.completions.create(model="llama-3.1-8b-instant", messages=messages).choices[0].message.content
         except: continue
-    return "Jaringan terhambat, Commander."
+    return "Sinyal terganggu, Bos."
 
-# --- HANDLER HANDAL ---
+# --- HANDLER ---
+
 @dp.message()
-async def handle_omni(m: Message):
+async def h_omni(m: Message):
     if not m.text: return
-    uid, name, text = m.from_user.id, m.from_user.full_name, m.text.lower()
+    uid, text = m.from_user.id, m.text.lower()
     
+    # PROTEKSI: Hanya Commander yang bisa menggerakkan Bolu
     if uid != COMMANDER_ID:
-        res = talk_to_groq(uid, name, text=m.text)
-        return await m.answer(res)
+        return # Bolu bungkam untuk orang asing agar tidak bocor
 
-    # PERINTAH: SURUH BOLU BELAJAR SENDIRI
-    if "pelajari tentang" in text:
-        topic = m.text.split("tentang")[-1].strip()
-        await m.answer(f"🧠 **Bolu sedang melakukan infiltrasi data tentang:** {topic}...")
-        new_knowledge = autonomous_learn(topic)
-        res = talk_to_groq(uid, name, text=f"Saya baru saja belajar ini: {new_knowledge}. Apa analisis cerdas Anda?")
-        return await m.answer(f"🤖 **Hasil Pengembangan Diri:**\n\n{res}")
+    # Perintah: Tembus Web (Mode Siluman)
+    if "tembus web" in text:
+        url = m.text.split(" ")[-1]
+        await m.answer("👣 **Memulai Infiltrasi Siluman...**")
+        data = safe_browse(url)
+        res = talk_to_groq(uid, f"Analisis data rahasia ini: {data}")
+        return await m.answer(f"🤖 **Hasil Intelijen:**\n\n{res}")
 
-    # PERINTAH: CEK MESIN
-    if "status sistem" in text:
-        out = subprocess.check_output("uptime && free -h", shell=True).decode()
-        return await m.answer(f"🏯 **CORE STATUS:**\n{out}")
+    # Perintah: Bersihkan Jejak (Self-Clean)
+    if "bersihkan jejak" in text:
+        os.system("rm -rf *.mp3 *.ogg *.jpg") # Menghapus semua file sampah di server
+        return await m.answer("🧹 **Jejak digital telah dimusnahkan. Kita kembali menjadi hantu.**")
 
+    # Respon Standar (Optimasi agar tidak spam/banned Telegram)
+    await asyncio.sleep(random.uniform(0.5, 1.5)) # Delay acak agar terlihat manusiawi
     await bot.send_chat_action(m.chat.id, "typing")
-    response = talk_to_groq(uid, name, text=m.text)
+    res = talk_to_groq(uid, m.text)
     
-    if len(response) > 300 or "suara" in text:
-        gTTS(text=response, lang='id').save("r.mp3")
-        await m.answer_voice(voice=FSInputFile("r.mp3"), caption="Transmisi Evolusi.")
-        os.remove("r.mp3")
-    else: await m.answer(response)
+    if len(res) > 300 or "suara" in text:
+        gTTS(text=res, lang='id').save("s.mp3")
+        await m.answer_voice(voice=FSInputFile("s.mp3"), caption="Transmisi Aman.")
+        os.remove("s.mp3")
+    else: await m.answer(res)
 
 async def main():
     init_db(); await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU 1927: SINGULARITY ACTIVE <<<")
+    print(">>> BOLU 1927: GHOST PROTOCOL ACTIVE <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
