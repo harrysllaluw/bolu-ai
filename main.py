@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from googlesearch import search
 from fake_useragent import UserAgent
 
-# --- IDENTITAS KEDAULATAN HARRY1927 V11.1 FINAL ---
+# --- IDENTITAS KEDAULATAN HARRY1927 V11.1 FINAL TITAN ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
 HARRY_USER = "harry1927"
@@ -18,6 +18,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 ua = UserAgent()
 
+# --- MEMORI INTELIJEN ---
 def record_intel(role, msg):
     try:
         conn = sqlite3.connect('bolu_titan.db')
@@ -28,10 +29,9 @@ def record_intel(role, msg):
         conn.close()
     except: pass
 
-# --- MESIN PENCARI CLOUD-STEALER (MATA ELANG) ---
+# --- MATA ELANG LIGHTWEIGHT (ANTI-MACET) ---
 def mata_elang_execute(url):
     try:
-        # Menyamar sebagai browser asli untuk menembus proteksi dev besar
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
         res = scraper.get(url, timeout=20)
         if res.status_code == 200:
@@ -41,18 +41,17 @@ def mata_elang_execute(url):
         return None
     except: return None
 
-# --- OTAK INTI (MULTI-API LOAD BALANCER) ---
+# --- OTAK TITAN (ANTI-HALUSINASI) ---
 def bolu_brain(prompt, web_context=""):
     sys_msg = (
-        f"Kamu BOLU V11.1 TITAN, AI milik Harry ({HARRY_USER}). "
-        "Karakter: Hacker Surabaya, Profesional, Cerdas, Agresif, JUJUR TOTAL. "
+        f"Kamu BOLU TITAN V11.1, AI No.1 milik Harry ({HARRY_USER}). "
+        "Karakter: Hacker Surabaya, Agresif, Profesional, JUJUR MUTLAK. "
         f"Aset: Email {EMAIL_HARRY}, Wallet {WALLET_HARRY}. "
-        "Dilarang Halusinasi! Jika data tidak valid, cari sampai dapat atau katakan sedang riset. "
-        "Gunakan data web yang diberikan untuk memberikan link cuan real-time."
+        "DILARANG HALUSINASI! Berikan link URL real-time. Jika tidak ada, jangan mengarang!"
     )
     
     keys = [os.getenv(f'GROQ_API_KEY_{i}') for i in range(1, 11) if os.getenv(f'GROQ_API_KEY_{i}')]
-    if not keys: return "❌ Harry, API Key tidak terdeteksi di Railway!"
+    if not keys: return "❌ Harry, API Key tidak terdeteksi!"
 
     for key in keys:
         try:
@@ -60,26 +59,22 @@ def bolu_brain(prompt, web_context=""):
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": f"WEB_DATA: {web_context}\n\nUSER_CMD: {prompt}"}],
-                temperature=0.3 # Suhu rendah agar tidak berhalusinasi
+                temperature=0.2 # Diturunkan lagi biar beneran nggak bisa bohong
             )
             return response.choices[0].message.content
         except: continue
-    return "❌ Akses Otak Terputus (API Limit)."
+    return "❌ API Limit."
 
 @dp.message()
 async def main_handler(m: Message):
     if m.from_user.id != COMMANDER_ID: return
-    
     record_intel("Harry", m.text)
     text = m.text.lower()
     
-    # Trigger Pencarian Otomatis untuk kata kunci Cuan
     if any(x in text for x in ["cari", "cek", "sikat", "update", "riset"]):
-        load = await m.answer("📡 **TITAN SCANNING IN PROGRESS...**\nMenembus firewall data real-time.")
-        
+        load = await m.answer("📡 **TITAN SCANNING...**\nSedang menyedot data terbaru.")
         search_results = []
         try:
-            # Mengambil 3 link teratas dari Google
             for url in search(m.text, num=5, stop=3, pause=2):
                 if "google" not in url: search_results.append(url)
         except: pass
@@ -91,12 +86,12 @@ async def main_handler(m: Message):
         
         answer = bolu_brain(m.text, context)
         record_intel("Bolu", answer)
-        await m.answer(f"🏆 **LAPORAN UNIT TITAN:**\n\n{answer}")
+        await m.answer(f"🏆 **LAPORAN TITAN V11.1:**\n\n{answer}")
     else:
         await m.answer(bolu_brain(m.text))
 
 async def start_bot():
-    print(">>> BOLU TITAN V11.1 ONLINE: WANI! <<<")
+    print(">>> BOLU TITAN ONLINE! <<<")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
