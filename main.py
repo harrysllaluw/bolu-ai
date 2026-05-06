@@ -7,28 +7,17 @@ from googlesearch import search
 from curl_cffi import requests as s_requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- KEDAULATAN MUTLAK HARRY1927 V15.1 "THE HUMANOID" ---
-# Mengambil TOKEN langsung dari Railway Variables
-TOKEN = os.getenv('TOKEN') or '8709757602:AAG5rRGSiveQATYho3vGcPVyGOYhxRIBzQo'
-OWNER_ID = 728762443 
-MEMORY_FILE = "bolu_humanoid.json"
+# --- KEDAULATAN MUTLAK HARRY1927 V15.5 OMNI-HUMANOID ---
+TOKEN = os.getenv('TOKEN') or os.getenv('BOT_TOKEN') or '8709757602:AAG5rRGSiveQATYho3vGcPVyGOYhxRIBzQo'
+OWNER_ID = int(os.getenv('OWNER_ID') or 728762443)
+MEMORY_FILE = "bolu_memory.json"
 
+# --- INDRA PENGLIHATAN & PENCARI KUNCI ---
 def get_sacred_keys():
-    """DETEKSI RADIKAL: Mencari semua kunci Groq tanpa peduli nama variabelnya"""
     keys = []
-    # Cara 1: Cari manual 1-8
-    for i in range(1, 9):
-        for suffix in ['.', '', '_']: # Coba pakai titik, tanpa titik, atau underscore
-            k = os.getenv(f'GROQ_API_KEY_{i}{suffix}')
-            if k and k.startswith('gsk_'):
-                clean_key = k.strip().replace('"', '').replace("'", "")
-                if clean_key not in keys: keys.append(clean_key)
-    
-    # Cara 2: Scan total semua variabel yang mengandung kata GROQ
-    if not keys:
-        for var_name, value in os.environ.items():
-            if "GROQ" in var_name and value.startswith('gsk_'):
-                keys.append(value.strip().replace('"', '').replace("'", ""))
+    for k, v in os.environ.items():
+        if "GROQ" in k and v.startswith('gsk_'):
+            keys.append(v.strip().replace('"', '').replace("'", ""))
     return keys
 
 GROQ_KEYS = get_sacred_keys()
@@ -38,7 +27,6 @@ scheduler = AsyncIOScheduler()
 
 class BoluHumanoid:
     def __init__(self):
-        self.key_index = 0
         self.memory = self.load_memory()
 
     def load_memory(self):
@@ -48,44 +36,70 @@ class BoluHumanoid:
 
     def save_memory(self, link):
         self.memory.append(link)
+        if len(self.memory) > 100: self.memory.pop(0)
         with open(MEMORY_FILE, 'w') as f: json.dump(self.memory, f)
 
-    async def eksekusi_dewa(self, prompt, context, acc_no=1, mode="chat"):
-        """Logika Anti-Macet: Langsung pakai kunci yang tersedia"""
-        if not GROQ_KEYS: 
-            return "❌ KUNCI GROQ TIDAK DITEMUKAN. Cek nama variabel di Railway (harus diawali gsk_)."
-
-        # Rotasi kunci otomatis
-        key = GROQ_KEYS[self.key_index % len(GROQ_KEYS)]
-        self.key_index += 1
-
+    async def mata_predator(self, url):
+        """MATA & KAKI: Menjelajah website dan mengambil data 'Daging'"""
         try:
-            client = Groq(api_key=key)
+            res = s_requests.get(url, impersonate="chrome120", timeout=20)
+            soup = BeautifulSoup(res.text, 'lxml')
+            for s in soup(["script", "style", "nav", "footer"]): s.decompose()
+            return " ".join(soup.get_text().split())[:8000]
+        except: return ""
+
+    async def otak_dewa(self, prompt, context):
+        """OTAK: Berpikir menggunakan 8 Otak Groq secara bergantian"""
+        if not GROQ_KEYS: return "❌ KUNCI OTAK TIDAK TERDETEKSI DI RAILWAY."
+        client = Groq(api_key=random.choice(GROQ_KEYS))
+        try:
             res = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": f"Bolu Humanoid Harry1927. Unit-{acc_no}."}, 
-                          {"role": "user", "content": f"DATA: {context}\n\nPERINTAH: {prompt}"}],
-                temperature=0.2
+                messages=[{"role": "system", "content": "Kamu Bolu V15.5 Omni-Humanoid. Pelayan setia Harry1927. Cari cuan nyata, instruksi tajam, tanpa basa-basi."}, 
+                          {"role": "user", "content": f"DATA INTEL: {context}\n\nPERINTAH: {prompt}"}],
+                temperature=0.1
             )
             return res.choices[0].message.content
         except Exception as e:
-            return f"⚠️ Unit-{acc_no} Error: {str(e)[:50]}. Mencoba unit lain..."
+            return f"⚠️ Sedang sinkronisasi ulang... ({str(e)[:30]})"
 
 bolu = BoluHumanoid()
 
-# ... (Fungsi hunting_cuan_otomatis & handle_sikat tetap sama seperti V15.0) ...
-# (Saya ringkas bagian bawah agar kamu tinggal copy-paste yang lengkap)
+# --- TANGAN: EKSEKUSI OTOMATIS ---
+async def hunting_otomatis():
+    """Tugas Mandiri: Patroli mencari uang setiap 30 menit"""
+    queries = ["latest testnet airdrop confirmed incentive", "new mining app early access 2026"]
+    q = random.choice(queries)
+    try:
+        for url in search(q, num_results=5):
+            if url not in bolu.memory and "google" not in url:
+                data = await bolu.mata_predator(url)
+                analisis = await bolu.otak_dewa("Apakah ini peluang uang nyata? Jika ya, berikan langkah daftarnya.", data)
+                if "scam" not in analisis.lower():
+                    bolu.save_memory(url)
+                    msg = f"🎯 **TARGET CUAN DITEMUKAN!**\n\n🔗 {url}\n\n**Analisis Bolu:**\n{analisis}"
+                    await bot.send_message(OWNER_ID, msg)
+                    break
+    except: pass
+
+@dp.message(F.text.func(lambda t: "sikat" in t.lower()))
+async def handle_sikat(m: Message):
+    if m.from_user.id != OWNER_ID: return
+    target = m.text.replace("sikat", "").strip() or "airdrop crypto terbaru"
+    await m.answer("👊 **MENGGERAKKAN TANGAN... MEMBEDAH TARGET...**")
+    await hunting_otomatis()
 
 @dp.message()
 async def chat_handler(m: Message):
     if m.from_user.id != OWNER_ID: return
-    # Langsung panggil eksekusi
-    ans = await bolu.eksekusi_dewa(m.text, "Chat Mode", acc_no=bolu.key_index+1)
+    ans = await bolu.otak_dewa(m.text, "Chat Mode Aktif")
     await m.answer(ans)
 
 async def main():
+    scheduler.add_job(hunting_otomatis, 'interval', minutes=30)
+    scheduler.start()
     await bot.delete_webhook(drop_pending_updates=True)
-    print(f">>> BOLU V15.1 ONLINE | {len(GROQ_KEYS)} KUNCI TERDETEKSI <<<")
+    print(f">>> BOLU V15.5 OMNI-HUMANOID ONLINE | {len(GROQ_KEYS)} OTAK AKTIF <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
