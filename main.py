@@ -13,16 +13,16 @@ TOKEN = os.getenv('TOKEN') or os.getenv('BOT_TOKEN') or '8709757602:AAG5rRGSiveQ
 OWNER_ID = int(os.getenv('OWNER_ID') or 728762443)
 MEMORY_FILE = "bolu_vault.json"
 
-# SCANNER 8 OTAK (Format Titik & Normal)
+# SCANNER 8 OTAK (Mendukung format titik '.' & normal)
 def get_sacred_keys():
     keys = []
     for i in range(1, 9):
         k = os.getenv(f'GROQ_API_KEY_{i}.') or os.getenv(f'GROQ_API_KEY_{i}')
         if k and k.startswith('gsk_'):
             keys.append(k.strip().replace('"', '').replace("'", ""))
-    if not keys: # Scan total jika tidak ketemu
+    if not keys:
         for v in os.environ.values():
-            if v.startswith('gsk_'): keys.append(v)
+            if isinstance(v, str) and v.startswith('gsk_'): keys.append(v)
     return keys
 
 GROQ_KEYS = get_sacred_keys()
@@ -37,18 +37,20 @@ class BoluEternal:
 
     def load_memory(self):
         if os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, 'r') as f: return json.load(f)
+            try:
+                with open(MEMORY_FILE, 'r') as f: return json.load(f)
+            except: return {}
         return {}
 
     def save_to_vault(self, url, intel):
         self.memory[url] = {"intel": intel, "time": str(datetime.now())}
         with open(MEMORY_FILE, 'w') as f: json.dump(self.memory, f)
 
-    async def get_brain(self):
+    async def rotate_key(self):
         if not GROQ_KEYS: return None
         key = GROQ_KEYS[self.key_index % len(GROQ_KEYS)]
         self.key_index += 1
-        return Groq(api_key=key)
+        return key
 
     async def mata_predator(self, url):
         try:
@@ -59,10 +61,11 @@ class BoluEternal:
         except: return ""
 
     async def berpikir(self, prompt, context="", acc_no=1):
-        client = await self.get_brain()
-        if not client: return "❌ KUNCI GROQ TIDAK TERDETEKSI."
+        key = await self.rotate_key()
+        if not key: return "❌ KUNCI GROQ TIDAK TERDETEKSI DI RAILWAY."
         try:
-            # PERBAIKAN ERROR __INIT__ : Format standar yang pasti jalan
+            # PERBAIKAN ABSOLUT: Format Groq Client yang benar
+            client = Groq(api_key=key)
             completion = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
@@ -86,22 +89,22 @@ async def patroli_otomatis():
                 raw = await bolu.mata_predator(url)
                 if len(raw) > 500:
                     bolu.save_to_vault(url, raw)
-                    await bot.send_message(OWNER_ID, f"🎯 **TARGET DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk membedah.")
+                    await bot.send_message(OWNER_ID, f"🎯 **TARGET DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk membedah potensi cuannya.")
                     break
     except: pass
 
 @dp.message(F.text.func(lambda t: "sikat" in t.lower()))
 async def handle_sikat(m: Message):
     if m.from_user.id != OWNER_ID: return
-    await m.answer("⚡ **MENGAKTIFKAN 8 OTAK PARALEL... MEMBEDAH TARGET...**")
+    await m.answer("⚡ **BOLU V16.0: MENGAKTIFKAN 8 OTAK PARALEL...**")
     
-    # Ambil target terakhir dari memori
     if not bolu.memory:
-        return await m.answer("❌ Belum ada target di memori. Biarkan saya patroli dulu.")
+        return await m.answer("❌ Belum ada target di memori. Biarkan saya patroli sebentar.")
     
     last_url = list(bolu.memory.keys())[-1]
     raw_data = bolu.memory[last_url]['intel']
     
+    # Jalankan analisis serentak dengan semua API Key
     tasks = [bolu.berpikir(m.text, raw_data, i+1) for i in range(len(GROQ_KEYS))]
     results = await asyncio.gather(*tasks)
     
