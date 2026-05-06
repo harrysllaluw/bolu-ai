@@ -11,7 +11,7 @@ import asyncpg
 
 # --- ARSITEKTUR OMNI-GOD V.ULTIMATE ---
 # Mengambil Identitas Bot dan Majikan
-TOKEN = os.getenv('BOT_TOKEN', '8709757602:AAEyEPKGtWuXIoYEwUgCCD5LQqTecZ8LA3A')
+TOKEN = os.getenv('BOT_TOKEN', '8709757602:AAG5rRGSiveQATYho3vGcPVyGOYhxRIBzQo')
 OWNER_ID = int(os.getenv('OWNER_ID', 728762443)) 
 DB_URL = os.getenv('DATABASE_URL')
 
