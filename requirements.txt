@@ -16,3 +16,4 @@ certifi==2024.2.2
 urllib3==2.2.1
 idna==3.6
 charset-normalizer==3.3.2
+playwright==1.42.0
