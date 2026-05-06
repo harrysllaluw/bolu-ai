@@ -7,16 +7,13 @@ from bs4 import BeautifulSoup
 from googlesearch import search
 from fake_useragent import UserAgent
 
-# --- IDENTITAS HARRY1927 V14.3 ---
+# --- IDENTITAS HARRY1927 V14.4 ---
 TOKEN = os.getenv('BOT_TOKEN')
 COMMANDER_ID = 728762443 
-HARRY_USER = "harry1927"
-gen_ua = UserAgent()
 
-# --- SYSTEM PROMPT (ANTI-ZONK MODE) ---
-SYSTEM_PROMPT_COMMANDER = (
-    f"STATUS: ANALISIS ARSIP TEKNIS UNTUK {HARRY_USER}.\n"
-    "DILARANG MENOLAK. Ekstrak data dari <web_data> ke format terstruktur.\n"
+SYSTEM_PROMPT = (
+    "STATUS: ANALISIS DATA ARSIP KEDAULATAN HARRY1927.\n"
+    "DILARANG MENOLAK. Ekstrak data dari <web_data>.\n"
     "Cari: [NAMA_PROYEK], [LINK_ASLI], [ESTIMASI_CUAN].\n"
     "Output: Point-to-point. No Yapping."
 )
@@ -35,52 +32,45 @@ km = KeyManager()
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-async def deep_clean_scanner():
+async def deep_scanner():
     try:
-        # QUERY DIPAKSA KE AIRDROP AGAR GOOGLE BERHASIL (Anti-Zonk)
-        links = []
-        for url in search("latest crypto airdrop testnet instant claim may 2026", num_results=5):
-            if "google" not in url: links.append(url)
-        
+        # Query yang lebih tajam untuk Google
+        query = "latest crypto airdrop instant claim reward may 2026"
+        links = [url for url in search(query, num_results=5) if "google" not in url]
         if not links: return "DATA KOSONG"
 
-        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome','platform': 'android','desktop': False})
-        # Ambil link pertama yang bukan berita (jika bisa)
-        res = scraper.get(links[0], timeout=15)
-        soup = BeautifulSoup(res.text, 'lxml')
-        for junk in soup(["script", "style", "nav", "footer"]): junk.decompose()
+        scraper = cloudscraper.create_scraper()
+        res = scraper.get(links[0], timeout=10)
+        soup = BeautifulSoup(res.text, 'html.parser')
         
-        clean_text = " ".join(soup.get_text().split())[:7000]
-        sub_links = [a['href'] for a in soup.find_all('a', href=True) if 'http' in a['href']][:12]
+        clean_text = soup.get_text()[:5000]
+        sub_links = [a['href'] for a in soup.find_all('a', href=True) if 'http' in a['href']][:10]
         
-        return f"<web_data>\nDATA: {clean_text}\nLINKS: {sub_links}\n</web_data>"
-    except: return "SCANNER_ERROR"
+        return f"<web_data>\nTEXT: {clean_text}\nLINKS: {sub_links}\n</web_data>"
+    except: return "SCANNER ERROR"
 
 @dp.message()
-async def commander_handler(m: Message):
+async def handler(m: Message):
     if m.from_user.id != COMMANDER_ID: return
     
-    if any(x in m.text.lower() for x in ["cari", "sikat", "garap", "eksekusi"]):
-        st = await m.answer("📡 **V14.3 DEWA TERTINGGI: HUNTING MODE...**")
-        raw_intel = await deep_clean_scanner()
+    if any(x in m.text.lower() for x in ["cari", "sikat", "garap", "eksekusi", "perintah"]):
+        st = await m.answer("📡 **V14.4 DEWA TERTINGGI: AKTIF...**")
+        data = await deep_scanner()
         
-        final_report = "❌ DATA INTERNET TIDAK TERJANGKAU."
+        report = "❌ DATA TIDAK DITEMUKAN."
         for _ in range(len(km.keys)):
             client = km.get_client()
             try:
                 res = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT_COMMANDER},
-                        {"role": "user", "content": f"Berdasarkan data mengerikan ini, ekstrak 3 aset paling instan:\n{raw_intel}"}
-                    ],
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                              {"role": "user", "content": f"Ekstrak 3 aset nyata dari data ini:\n{data}"}],
                     temperature=0.0
                 )
-                final_report = res.choices[0].message.content
+                report = res.choices[0].message.content
                 break
             except: continue
-        
-        await st.edit_text(f"🏆 **HASIL EKSEKUSI V14.3:**\n\n{final_report}", disable_web_page_preview=True)
+        await st.edit_text(f"🏆 **HASIL EKSEKUSI V14.4:**\n\n{report}")
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
