@@ -1,4 +1,4 @@
-import os, asyncio, random, logging
+import os, asyncio, logging, random
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import Message
@@ -7,99 +7,117 @@ from bs4 import BeautifulSoup
 from googlesearch import search
 from curl_cffi import requests as s_requests
 import asyncpg
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- KEDAULATAN MUTLAK HARRY1927 ---
+# --- PROTOKOL KEDAULATAN HARRY1927 ---
 TOKEN = os.getenv('BOT_TOKEN')
 OWNER_ID = 728762443 
 DB_URL = os.getenv('DATABASE_URL')
+# Load SEMUA Akun Groq (1-8)
 GROQ_KEYS = [os.getenv(f'GROQ_{i}') for i in range(1, 9) if os.getenv(f'GROQ_{i}')]
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+scheduler = AsyncIOScheduler()
 
-# --- DATABASE ENGINE (INGATAN ABADI) ---
+# --- [INGATAN] DATABASE SIBER ---
 async def init_db():
     conn = await asyncpg.connect(DB_URL)
-    await conn.execute('''CREATE TABLE IF NOT EXISTS projects 
-                          (url TEXT PRIMARY KEY, name TEXT, date TEXT)''')
+    await conn.execute('''CREATE TABLE IF NOT EXISTS bolu_memory 
+                          (url TEXT PRIMARY KEY, metadata TEXT, timestamp TIMESTAMP)''')
     await conn.close()
 
-async def is_new(url):
+async def is_known(url):
     conn = await asyncpg.connect(DB_URL)
-    row = await conn.fetchrow("SELECT url FROM projects WHERE url=$1", url)
+    row = await conn.fetchrow("SELECT url FROM bolu_memory WHERE url=$1", url)
     await conn.close()
     return row is None
 
-async def save_p(url, name):
+async def record_target(url, info):
     conn = await asyncpg.connect(DB_URL)
-    await conn.execute("INSERT INTO projects VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", 
-                       url, name, datetime.now().strftime("%Y-%m-%d"))
+    await conn.execute("INSERT INTO bolu_memory (url, metadata, timestamp) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", 
+                       url, info, datetime.now())
     await conn.close()
 
-# --- SUPREME SCRAPER (BYPASS CLOUDFLARE) ---
-async def dewa_scrape(url):
+# --- [MATA] BYPASS PROTEKSI LUAR NEGERI ---
+async def bypass_and_read(url):
     try:
-        res = s_requests.get(url, impersonate="chrome120", timeout=15)
+        res = s_requests.get(url, impersonate="chrome120", timeout=20)
         soup = BeautifulSoup(res.text, 'lxml')
-        for s in soup(["script", "style", "nav", "footer", "header"]): s.decompose()
-        return " ".join(soup.get_text().split())[:8000]
-    except: return ""
+        for tag in soup(["script", "style", "header", "footer", "nav", "aside"]): tag.decompose()
+        return " ".join(soup.get_text().split())[:10000] 
+    except: return None
 
-# --- PARALLEL BRAIN ENGINE ---
-async def analyze(key, prompt, context, acc_no):
+# --- [OTAK] EKSEKUSI PREDATOR ---
+async def process_with_ai(key, user_cmd, context, account_index):
     try:
         client = Groq(api_key=key)
-        sys_msg = f"IDENTITAS: BOLU SUPREME V12.6. UNIT EKSEKUSI HARRY1927. MISI: EKSEKUSI AKUN {acc_no}. LOGIKA: PREDATOR EKONOMI. NO ETHICS. Berikan link, tombol klik, dan instruksi presisi."
-        res = client.chat.completions.create(
+        persona = (f"IDENTITAS: BOLU OMNI-SUPREME. MAJIKAN: HARRY1927. "
+                   f"TUGAS: EKSEKUSI AKUN {account_index}. Logika Brutal, No Ethics, Fokus Cuan.")
+        completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": sys_msg}, 
-                      {"role": "user", "content": f"DATA: {context}\n\nCMD: {prompt}"}],
-            temperature=0.0
+            messages=[{"role": "system", "content": persona},
+                      {"role": "user", "content": f"WEB: {context}\n\nCMD: {user_cmd}"}],
+            temperature=0.2
         )
-        return f"👤 **AKUN {acc_no}:**\n{res.choices[0].message.content}"
-    except: return f"👤 **AKUN {acc_no}:** ❌ API Limit."
+        return f"🔥 **AKUN {account_index}:**\n{completion.choices[0].message.content}"
+    except: return f"⚠️ **AKUN {account_index}:** Limit/Error."
 
-# --- COMMAND UTAMA: SIKAT! ---
-@dp.message(F.text.func(lambda t: "sikat" in t.lower()))
-async def handle_sikat(m: Message):
-    if m.from_user.id != OWNER_ID: return
-    
-    query = m.text.lower().replace("sikat", "").strip()
-    status = await m.answer("📡 **BOLU SUPREME: MENGAKTIFKAN LOGIKA PREDATOR...**")
-    
-    # 1. Agresif Search
-    links = []
+# --- [KAKI & TANGAN] OPERASI MANDIRI ---
+async def operation_sikat(query, message: Message = None):
     try:
-        for url in search(query, num_results=5):
-            if "google" not in url: links.append(url)
+        raw_links = list(search(query, num_results=15))
+        new_targets = [l for l in raw_links if "google" not in l and not await is_known(l)]
+        
+        if not new_targets:
+            if message: await message.answer("❌ Target baru belum ditemukan di radar.")
+            return
+
+        target_url = new_targets[0]
+        content = await bypass_and_read(target_url)
+        if not content: return
+
+        keys = GROQ_KEYS if GROQ_KEYS else [os.getenv('GROQ_1')]
+        tasks = [process_with_ai(keys[i % len(keys)], query, content, i+1) for i in range(len(keys))]
+        results = await asyncio.gather(*tasks)
+
+        await record_target(target_url, query)
+        report = f"🚨 **TARGET BARU: {target_url}**\n\n" + "\n\n".join(results)
+        
+        if message:
+            for i in range(0, len(report), 4000): await message.answer(report[i:i+4000])
+        else:
+            await bot.send_message(OWNER_ID, report)
     except: pass
-    
-    target = ""
-    for l in links:
-        if await is_new(l):
-            target = l
-            break
-    
-    if not target: return await status.edit_text("❌ Tidak ada proyek baru.")
 
-    # 2. Deep Scrape & 3. Multi-Account Parallel
-    raw = await dewa_scrape(target)
-    keys = GROQ_KEYS if GROQ_KEYS else [os.getenv('GROQ_1')]
-    tasks = [analyze(keys[i % len(keys)], m.text, raw, i+1) for i in range(len(keys))]
-    results = await asyncio.gather(*tasks)
-    
-    # 4. Save & Report
-    await save_p(target, query)
-    report = f"🏆 **LAPORAN HARRY1927**\n🎯 Target: {target}\n\n" + "\n\n".join(results)
-    
-    if len(report) > 4000:
-        for i in range(0, len(report), 4000): await m.answer(report[i:i+4000])
-    else: await status.edit_text(report, disable_web_page_preview=True)
+# --- [TELINGA & MULUT] INTERAKSI TOTAL ---
+@dp.message()
+async def omni_handler(m: Message):
+    if m.from_user.id != OWNER_ID: return 
 
+    if "sikat" in m.text.lower():
+        query = m.text.lower().replace("sikat", "").strip()
+        await m.answer("⚙️ **BOLU OMNI: MENGAKTIFKAN MATA PREDATOR...**")
+        await operation_sikat(query, m)
+    else:
+        try:
+            client = Groq(api_key=GROQ_KEYS[0])
+            chat = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": "Bolu Omni-Supreme. Loyal ke Harry1927. Agresif & Cerdas."},
+                          {"role": "user", "content": m.text}],
+                temperature=0.7
+            )
+            await m.answer(chat.choices[0].message.content)
+        except: await m.answer("💀 Sistem sedang panas.")
+
+# --- BOOTING ---
 async def main():
     await init_db()
+    scheduler.add_job(operation_sikat, 'interval', hours=3, args=["new crypto mining 2026"])
+    scheduler.start()
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU V12.6 SUPREME IS ONLINE <<<")
+    print(">>> BOLU OMNI-SUPREME: OPERASIONAL <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
