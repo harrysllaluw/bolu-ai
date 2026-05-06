@@ -1,5 +1,4 @@
-import os, asyncio, logging, random
-from datetime import datetime
+import os, asyncio, logging, random, json
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import Message
 from groq import Groq
@@ -8,134 +7,116 @@ from googlesearch import search
 from curl_cffi import requests as s_requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- KEDAULATAN MUTLAK HARRY1927 V13.2 ---
-# Token & ID dikunci agar server stabil
-TOKEN = '8709757602:AAEyEPKGtWuXIoYEwUgCCD5LQqTecZ8LA3A'
+# --- KEDAULATAN MUTLAK HARRY1927 V14.0 "SUPER UNLIMITED" ---
+TOKEN = '8709757602:AAG5rRGSiveQATYho3vGcPVyGOYhxRIBzQo'
 OWNER_ID = 728762443 
+MEMORY_FILE = "bolu_memory.json"
 
 def get_sacred_keys():
-    """Deteksi Presisi 8 API: Membersihkan spasi & karakter liar"""
     keys = []
     for i in range(1, 9):
-        # Cek format dengan titik (GROQ_API_KEY_1.) sesuai instruksi
         k = os.getenv(f'GROQ_API_KEY_{i}.') or os.getenv(f'GROQ_API_KEY_{i}')
-        if k:
-            keys.append(k.strip().replace('"', '').replace("'", ""))
+        if k: keys.append(k.strip().replace('"', '').replace("'", ""))
     return keys
 
 GROQ_KEYS = get_sacred_keys()
-
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 scheduler = AsyncIOScheduler()
 
-class BoluGodMode:
+class BoluSupreme:
     def __init__(self):
         self.key_index = 0
+        self.memory = self.load_memory()
 
-    def get_current_key(self):
-        """Rotasi Otak: Memastikan satu otak tidak bekerja sendirian"""
+    def load_memory(self):
+        if os.path.exists(MEMORY_FILE):
+            with open(MEMORY_FILE, 'r') as f: return json.load(f)
+        return []
+
+    def save_memory(self, link):
+        self.memory.append(link)
+        if len(self.memory) > 100: self.memory.pop(0) # Simpan 100 link terakhir
+        with open(MEMORY_FILE, 'w') as f: json.dump(self.memory, f)
+
+    def get_role_key(self, role_type):
+        """Multi-Agent: Membagi tugas ke API berbeda"""
         if not GROQ_KEYS: return None
-        key = GROQ_KEYS[self.key_index]
-        self.key_index = (self.key_index + 1) % len(GROQ_KEYS)
-        return key
+        # Otak 1-3: Riset, 4-6: Analisis, 7-8: Eksekusi
+        if role_type == "scout": idx = random.randint(0, 2)
+        elif role_type == "analyst": idx = random.randint(3, 5)
+        else: idx = random.randint(6, 7)
+        return GROQ_KEYS[idx % len(GROQ_KEYS)]
 
     async def scrape_predator(self, url):
-        """Mata Dewa: Menembus proteksi server tingkat tinggi"""
         try:
-            res = s_requests.get(url, impersonate="chrome120", timeout=25)
+            res = s_requests.get(url, impersonate="chrome120", timeout=20)
             soup = BeautifulSoup(res.text, 'lxml')
-            # Membersihkan sampah website agar data 'Daging' semua
-            for s in soup(["script", "style", "nav", "footer", "header", "aside"]): 
-                s.decompose()
-            return " ".join(soup.get_text().split())[:9000]
-        except Exception as e:
-            logging.error(f"Scrape Error: {e}")
-            return ""
+            for s in soup(["script", "style", "nav", "footer"]): s.decompose()
+            return " ".join(soup.get_text().split())[:8000]
+        except: return ""
 
-    async def eksekusi_dewa(self, prompt, context, acc_no, mode="eksekutif"):
-        """Logika Anti-Limit: Menjamin respon meski jaringan Groq tidak stabil"""
-        key = self.get_current_key()
-        if not key: return "❌ KUNCI DEWA TIDAK TERDETEKSI DI RAILWAY."
-
+    async def ask_bolu(self, prompt, context, role="analyst"):
+        key = self.get_role_key(role)
+        if not key: return "❌ API KEY ERROR."
         try:
             client = Groq(api_key=key)
-            if mode == "eksekutif":
-                sys_msg = (f"IDENTITAS: BOLU SUPREME V13.2. UNIT ELIT HARRY1927. AKUN: {acc_no}. "
-                           "LOGIKA: DEWA PREDATOR EKONOMI. Instruksi: Cari celah cuan riil. "
-                           "Dilarang halusinasi. Jika butuh data, minta ke Bos Harry.")
-            else:
-                sys_msg = f"Kamu Bolu, pelayan setia Harry1927. Gunakan otak ke-{self.key_index+1}."
-
+            # Logika Multi-Agent Terintegrasi
+            roles = {
+                "scout": "Kamu adalah PENCARI CUAN. Fokus temukan tanggal TGE dan link pendaftaran.",
+                "analyst": "Kamu adalah ANALIS RISIKO. Cek apakah ini SCAM atau REAL berdasarkan investor.",
+                "manager": "Kamu adalah ASISTEN PRIBADI HARRY1927. Buat laporan singkat, padat, dan instruksi jelas."
+            }
             res = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": sys_msg}, 
-                          {"role": "user", "content": f"DATA_INTEL: {context}\n\nPERINTAH: {prompt}"}],
-                temperature=0.2
+                messages=[{"role": "system", "content": roles.get(role, "Asisten Harry1927")}, 
+                          {"role": "user", "content": f"DATA: {context}\n\nPERINTAH: {prompt}"}],
+                temperature=0.1
             )
             return res.choices[0].message.content
-        except Exception as e:
-            # Jika error, beri tahu Harry otaknya yang mana yang bermasalah
-            return f"⚠️ UNIT-{acc_no} SEDANG RE-SINKRONISASI (API Error). Coba lagi dalam 10 detik."
+        except: return "⚠️ Otak sedang sinkronisasi..."
 
-bolu = BoluGodMode()
+bolu = BoluSupreme()
 
-async def hunting_cuan_otomatis():
-    """Fitur Jalan Otomatis: Mencari mangsa setiap jam"""
-    queries = ["new crypto testnet incentivized 2026", "early access depin mining confirmed"]
+async def auto_hunter():
+    # Pencarian lebih agresif tapi cerdas
+    queries = ["latest incentivized testnet airdrop confirmed", "new depin mining early access 2026"]
     q = random.choice(queries)
     try:
-        for url in search(q, num_results=3):
-            if "google" not in url:
-                await bot.send_message(OWNER_ID, f"🎯 **TARGET OTOMATIS DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk membedah data.")
-                break
-    except:
-        pass
+        for url in search(q, num_results=5):
+            if url not in bolu.memory and "google" not in url:
+                raw_data = await bolu.scrape_predator(url)
+                # Analisis dulu sebelum kirim ke Harry (Filter Sampah)
+                analysis = await bolu.ask_bolu("Apakah ini proyek legit? Jawab singkat saja.", raw_data, "analyst")
+                if "scam" not in analysis.lower():
+                    bolu.save_memory(url)
+                    await bot.send_message(OWNER_ID, f"🚀 **DAGING DETECTED!**\nTarget: {url}\n\n**Hasil Analisis:**\n{analysis}\n\nKetik 'Sikat' untuk eksekusi.")
+                    break
+    except: pass
 
 @dp.message(F.text.func(lambda t: "sikat" in t.lower()))
 async def handle_sikat(m: Message):
     if m.from_user.id != OWNER_ID: return
-    st = await m.answer("⚡ **MENGAKTIFKAN 8 OTAK PARALEL... MEMINDAI TARGET...**")
+    st = await m.answer("🧠 **8 OTAK SUPREME BEKERJA...**")
+    target = m.text.replace("sikat", "").strip() or "airdrop terbaru"
     
-    # Ambil link terbaru dari pesan atau cari baru
-    q = m.text.lower().replace("sikat", "").strip() or "crypto airdrop terbaru"
-    links = []
-    try:
-        for url in search(q, num_results=1): links.append(url)
-    except: pass
-    
-    if not links: 
-        return await st.edit_text("❌ TARGET TIDAK DITEMUKAN DI RADAR.")
-    
-    raw = await bolu.scrape_predator(links[0])
-    # Membagi tugas ke semua API Key yang aktif
-    tasks = [bolu.eksekusi_dewa(m.text, raw, i+1) for i in range(len(GROQ_KEYS) if GROQ_KEYS else 1)]
-    results = await asyncio.gather(*tasks)
-    
-    report = f"👑 **LAPORAN KONSOLIDASI HARRY1927**\n🌐 Target: {links[0]}\n\n"
-    for i, r in enumerate(results):
-        report += f"👤 **UNIT-{i+1}:**\n{r}\n\n"
-    
-    if len(report) > 4000:
-        for i in range(0, len(report), 4000): await m.answer(report[i:i+4000])
-    else:
-        await st.edit_text(report, disable_web_page_preview=True)
+    # Gunakan Multi-Agent untuk laporan
+    raw = await bolu.scrape_predator(target)
+    report = await bolu.ask_bolu("Berikan panduan pendaftaran paling simpel dan cepat.", raw, "manager")
+    await st.edit_text(f"👑 **PANDUAN EKSEKUSI HARRY1927**\n\n{report}", disable_web_page_preview=True)
 
 @dp.message()
-async def handler_chat(m: Message):
-    """Interaksi Biasa dengan Harry"""
-    if m.from_user.id != OWNER_ID: return
-    ans = await bolu.eksekusi_dewa(m.text, "Chat Mode", 0, mode="chat")
-    await m.answer(ans)
+async def chat(m: Message):
+    if m.from_user.id == OWNER_ID:
+        ans = await bolu.ask_bolu(m.text, "Chat Mode", "manager")
+        await m.answer(ans)
 
 async def main():
-    # Menjalankan mesin pencari otomatis tiap 1 jam
-    scheduler.add_job(hunting_cuan_otomatis, 'interval', hours=1)
+    scheduler.add_job(auto_hunter, 'interval', minutes=45) # Lebih sering patroli
     scheduler.start()
     await bot.delete_webhook(drop_pending_updates=True)
-    print(f">>> BOLU V13.2 SUPREME ONLINE | {len(GROQ_KEYS)} KUNCI AKTIF <<<")
+    print(">>> BOLU V14.0 SUPER UNLIMITED ONLINE <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
