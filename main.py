@@ -11,9 +11,24 @@ import asyncpg
 
 # --- ARSITEKTUR OMNI-GOD V.ULTIMATE ---
 TOKEN = os.getenv('BOT_TOKEN')
+# Pastikan OWNER_ID di Railway diisi angka ID asli Anda
 OWNER_ID = int(os.getenv('OWNER_ID', 728762443)) 
 DB_URL = os.getenv('DATABASE_URL')
-GROQ_KEYS = [os.getenv(f'GROQ_API_KEY_{i}') for i in range(1, 9) if os.getenv(f'GROQ_API_KEY_{i}')]
+
+# MENGAMBIL 8 KUNCI API DENGAN TITIK (GROQ_API_KEY_1. s/d 8.)
+GROQ_KEYS = []
+for i in range(1, 9):
+    # Nama variabel diatur agar jeli mencari tanda titik di akhir
+    key_name = f'GROQ_API_KEY_{i}.' 
+    val = os.getenv(key_name)
+    if val:
+        GROQ_KEYS.append(val)
+
+# Fallback jika ternyata Anda lupa menaruh titik di variabel Railway
+if not GROQ_KEYS:
+    for i in range(1, 9):
+        val = os.getenv(f'GROQ_API_KEY_{i}')
+        if val: GROQ_KEYS.append(val)
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -31,9 +46,10 @@ class BoluOmniGod:
         await conn.execute('''CREATE TABLE IF NOT EXISTS empire_vault 
             (url TEXT PRIMARY KEY, title TEXT, intel TEXT, status TEXT, timestamp TIMESTAMP)''')
         await conn.close()
-        print(">>> INTEGRITAS DATABASE: TERVERIFIKASI JANGKA PANJANG <<<")
+        print(f">>> SISTEM AKTIF | {len(GROQ_KEYS)} API KEYS TERDETEKSI <<<")
 
     async def rotate_key(self):
+        if not GROQ_KEYS: return None
         key = GROQ_KEYS[self.key_index]
         self.key_index = (self.key_index + 1) % len(GROQ_KEYS)
         return key
@@ -48,6 +64,8 @@ class BoluOmniGod:
 
     async def execute_parallel_intel(self, prompt, context, acc_no):
         key = await self.rotate_key()
+        if not key: return f"🏦 **UNIT-{acc_no}:** ❌ API KEY TIDAK TERPASANG"
+        
         client = Groq(api_key=key)
         sys_msg = (
             f"IDENTITAS: BOLU OMNI-GOD V.ULTIMATE. EKSEKUTOR MULTI-AKUN HARRY1927. "
@@ -63,7 +81,8 @@ class BoluOmniGod:
                 temperature=0.0
             )
             return f"🏦 **UNIT-{acc_no}:**\n{res.choices[0].message.content}"
-        except: return f"🏦 **UNIT-{acc_no}:** ❌ KONEKSI LIMIT (MENUNGGU ROTASI)"
+        except Exception as e: 
+            return f"🏦 **UNIT-{acc_no}:** ❌ LIMIT/OFFLINE"
 
     async def autonomous_scan(self):
         queries = ["new crypto airdrop mainnet 2026", "incentivized testnet reward confirmed"]
@@ -76,16 +95,19 @@ class BoluOmniGod:
                 if "google" not in url: links.append(url)
         except: pass
 
-        conn = await self.get_db()
-        for url in links:
-            exists = await conn.fetchrow("SELECT url FROM empire_vault WHERE url=$1", url)
-            if not exists:
-                raw = await self.supreme_scrape(url)
-                if len(raw) > 500:
-                    await conn.execute("INSERT INTO empire_vault VALUES ($1, $2, $3, $4, $5)",
-                        url, "AUTO_FIND", raw, "PENDING", datetime.now())
-                    await bot.send_message(OWNER_ID, f"🎯 **TARGET OTOMATIS DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk eksekusi massal.")
-        await conn.close()
+        if links:
+            conn = await self.get_db()
+            for url in links:
+                exists = await conn.fetchrow("SELECT url FROM empire_vault WHERE url=$1", url)
+                if not exists:
+                    raw = await self.supreme_scrape(url)
+                    if len(raw) > 500:
+                        await conn.execute("INSERT INTO empire_vault VALUES ($1, $2, $3, $4, $5)",
+                            url, "AUTO_FIND", raw, "PENDING", datetime.now())
+                        try:
+                            await bot.send_message(OWNER_ID, f"🎯 **TARGET OTOMATIS DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk eksekusi massal.")
+                        except: pass
+            await conn.close()
 
 bolu = BoluOmniGod()
 
@@ -103,7 +125,9 @@ async def handle_execution(m: Message):
         try:
             for url in search(query, num_results=3): links.append(url)
         except: pass
-        if not links: return await status.edit_text("❌ JALUR DATA TERPUTUS. TIDAK ADA TARGET.")
+        if not links: 
+            await conn.close()
+            return await status.edit_text("❌ JALUR DATA TERPUTUS. TIDAK ADA TARGET.")
         raw_data = await bolu.supreme_scrape(links[0])
         target_url = links[0]
     else:
