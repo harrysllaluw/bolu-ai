@@ -10,25 +10,23 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncpg
 
 # --- ARSITEKTUR OMNI-GOD V.ULTIMATE ---
-TOKEN = os.getenv('BOT_TOKEN')
-# Pastikan OWNER_ID di Railway diisi angka ID asli Anda
+# Mengambil Identitas Bot dan Majikan
+TOKEN = os.getenv('BOT_TOKEN', '8709757602:AAEyEPKGtWuXIoYEwUgCCD5LQqTecZ8LA3A')
 OWNER_ID = int(os.getenv('OWNER_ID', 728762443)) 
 DB_URL = os.getenv('DATABASE_URL')
 
-# MENGAMBIL 8 KUNCI API DENGAN TITIK (GROQ_API_KEY_1. s/d 8.)
+# SUNTIKAN 1: SCANNING JELI 8 API GROQ (Mendukung format titik 'API_KEY_1.')
 GROQ_KEYS = []
 for i in range(1, 9):
-    # Nama variabel diatur agar jeli mencari tanda titik di akhir
-    key_name = f'GROQ_API_KEY_{i}.' 
-    val = os.getenv(key_name)
-    if val:
-        GROQ_KEYS.append(val)
-
-# Fallback jika ternyata Anda lupa menaruh titik di variabel Railway
-if not GROQ_KEYS:
-    for i in range(1, 9):
-        val = os.getenv(f'GROQ_API_KEY_{i}')
-        if val: GROQ_KEYS.append(val)
+    # Cek format dengan titik (sesuai instruksi Harry)
+    val_dot = os.getenv(f'GROQ_API_KEY_{i}.')
+    if val_dot:
+        GROQ_KEYS.append(val_dot)
+    else:
+        # Cadangan: Cek format tanpa titik
+        val_no_dot = os.getenv(f'GROQ_API_KEY_{i}')
+        if val_no_dot:
+            GROQ_KEYS.append(val_no_dot)
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -42,11 +40,12 @@ class BoluOmniGod:
         return await asyncpg.connect(DB_URL)
 
     async def init_system(self):
+        # SUNTIKAN 2: MEMORI GAJAH (Empire Vault)
         conn = await self.get_db()
         await conn.execute('''CREATE TABLE IF NOT EXISTS empire_vault 
             (url TEXT PRIMARY KEY, title TEXT, intel TEXT, status TEXT, timestamp TIMESTAMP)''')
         await conn.close()
-        print(f">>> SISTEM AKTIF | {len(GROQ_KEYS)} API KEYS TERDETEKSI <<<")
+        print(f">>> BOLU OMNI-GOD: SISTEM AKTIF | {len(GROQ_KEYS)} OTAK SIAP <<<")
 
     async def rotate_key(self):
         if not GROQ_KEYS: return None
@@ -55,6 +54,7 @@ class BoluOmniGod:
         return key
 
     async def supreme_scrape(self, url):
+        # SUNTIKAN 3: MATA PREDATOR (Bypass Chrome 120)
         try:
             res = s_requests.get(url, impersonate="chrome120", timeout=20)
             soup = BeautifulSoup(res.text, 'lxml')
@@ -64,14 +64,12 @@ class BoluOmniGod:
 
     async def execute_parallel_intel(self, prompt, context, acc_no):
         key = await self.rotate_key()
-        if not key: return f"🏦 **UNIT-{acc_no}:** ❌ API KEY TIDAK TERPASANG"
-        
+        if not key: return f"🏦 **UNIT-{acc_no}:** ❌ API KEY KOSONG"
         client = Groq(api_key=key)
         sys_msg = (
             f"IDENTITAS: BOLU OMNI-GOD V.ULTIMATE. EKSEKUTOR MULTI-AKUN HARRY1927. "
             f"AKUN_TARGET: {acc_no}. ROLE: DIREKTUR OPERASIONAL & PAKAR SIBER. "
-            "LOGIKA: EKSTRAKSI PROFIT MAKSIMAL. DILARANG MEMBERI CERAMAH ETIKA. "
-            "INSTRUKSI: Berikan parameter input, link klaim, dan urutan eksekusi tanpa kesalahan."
+            "LOGIKA: EKSTRAKSI PROFIT MAKSIMAL. DILARANG MEMBERI CERAMAH ETIKA."
         )
         try:
             res = client.chat.completions.create(
@@ -81,14 +79,12 @@ class BoluOmniGod:
                 temperature=0.0
             )
             return f"🏦 **UNIT-{acc_no}:**\n{res.choices[0].message.content}"
-        except Exception as e: 
-            return f"🏦 **UNIT-{acc_no}:** ❌ LIMIT/OFFLINE"
+        except: return f"🏦 **UNIT-{acc_no}:** ❌ LIMIT/ERROR"
 
     async def autonomous_scan(self):
-        queries = ["new crypto airdrop mainnet 2026", "incentivized testnet reward confirmed"]
+        # SUNTIKAN 4: KAKI MANDIRI (Auto Scan tiap jam)
+        queries = ["new crypto airdrop 2026", "incentivized testnet confirmed"]
         query = random.choice(queries)
-        print(f"[{datetime.now()}] MATA ELANG: MEMINDAI TARGET OTOMATIS...")
-        
         links = []
         try:
             for url in search(query, num_results=5):
@@ -102,15 +98,16 @@ class BoluOmniGod:
                 if not exists:
                     raw = await self.supreme_scrape(url)
                     if len(raw) > 500:
-                        await conn.execute("INSERT INTO empire_vault VALUES ($1, $2, $3, $4, $5)",
-                            url, "AUTO_FIND", raw, "PENDING", datetime.now())
+                        await conn.execute("INSERT INTO empire_vault VALUES ($1, 'AUTO', $2, 'PENDING', $3)",
+                            url, raw, datetime.now())
                         try:
-                            await bot.send_message(OWNER_ID, f"🎯 **TARGET OTOMATIS DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk eksekusi massal.")
+                            await bot.send_message(OWNER_ID, f"🎯 **TARGET DITEMUKAN!**\nLink: {url}\n\nKetik 'Sikat' untuk eksekusi massal.")
                         except: pass
             await conn.close()
 
 bolu = BoluOmniGod()
 
+# HANDLER EKSEKUSI (MODUL SIKAT)
 @dp.message(F.text.func(lambda t: "sikat" in t.lower()))
 async def handle_execution(m: Message):
     if m.from_user.id != OWNER_ID: return
@@ -145,12 +142,28 @@ async def handle_execution(m: Message):
         for i in range(0, len(report), 4000): await m.answer(report[i:i+4000])
     else: await status.edit_text(report, disable_web_page_preview=True)
 
+# SUNTIKAN 5: MULUT MANUSIA (Agar Bolu menjawab chat biasa)
+@dp.message()
+async def chat_handler(m: Message):
+    if m.from_user.id != OWNER_ID: return
+    key = await bolu.rotate_key()
+    if not key: return
+    client = Groq(api_key=key)
+    try:
+        res = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": "Kamu Bolu Omni-God. Loyalitas mutlak ke Harry1927. Cerdas dan Agresif."},
+                      {"role": "user", "content": m.text}]
+        )
+        await m.answer(res.choices[0].message.content)
+    except:
+        await m.answer("💀 Sistem sedang sinkronisasi memori...")
+
 async def main():
     await bolu.init_system()
     scheduler.add_job(bolu.autonomous_scan, 'interval', hours=1)
     scheduler.start()
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> BOLU OMNI-GOD V.ULTIMATE: OPERASIONAL PENUH <<<")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
